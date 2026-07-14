@@ -24,7 +24,31 @@ let camMode = 'full';
 let speakEndAt = 0;   /* echo gate: room reverb of her voice outlives the audio */
 let userSceneTurn = -1;   /* manual scene pick wins over her [scene:] directives this turn */
 const avatarTalking = () =>
-  state === S.SPEAK || (player && player.active) || Date.now() - speakEndAt < 600;
+  state === S.SPEAK || (player && player.active) || Date.now() - speakEndAt < 1200;
+
+/* ---- transcript echo filter ----
+   AEC and VAD thresholds can't fully stop her speaker voice from reaching the
+   STT (recognition results also lag 1-2s past the gate). But we know exactly
+   what she said: any "user utterance" whose words mostly overlap her recent
+   speech is her own echo — drop it before it becomes a message. */
+let lyraRecentWords = [];   /* [{w, t}] */
+const tokWords = s => String(s).toLowerCase().match(/[\p{L}\p{N}']+/gu) || [];
+function noteLyraSpeech(text) {
+  const t = Date.now();
+  for (const w of tokWords(text)) lyraRecentWords.push({ w, t });
+  const cut = t - 20000;
+  while (lyraRecentWords.length && lyraRecentWords[0].t < cut) lyraRecentWords.shift();
+}
+function isHerEcho(text) {
+  const words = tokWords(text);
+  if (words.length < 2) return false;
+  const cut = Date.now() - 15000;
+  const recent = new Set(lyraRecentWords.filter(x => x.t >= cut).map(x => x.w));
+  if (!recent.size) return false;
+  let hit = 0;
+  for (const w of words) if (recent.has(w)) hit++;
+  return hit / words.length >= .6;
+}
 
 /* room lighting follows the state machine (AURA_PROVIDER in .env) */
 let auraLast = 0;
@@ -282,6 +306,7 @@ async function handleUser(text, opts = {}) {
       cancelFiller();
       if (state !== S.SPEAK) setState(S.SPEAK);
       for (const m of (seg.mood || [])) avatar.nudgeMood(m.emotion, m.w * .8);
+      noteLyraSpeech(seg.caption);   /* feeds the echo filter */
       startCaption(seg);
       lyraBubbleAppend(seg.caption);
     },
@@ -404,8 +429,12 @@ async function boot() {
 
     call = new CallLoop({
       lang: () => $('micLang').value,
-      onUtterance: t => { showUserCaption(''); handleUser(t); },
-      onInterim: t => showUserCaption(t),
+      onUtterance: t => {
+        showUserCaption('');
+        if (isHerEcho(t)) return;      /* her own voice bounced off the speakers */
+        handleUser(t);
+      },
+      onInterim: t => showUserCaption(isHerEcho(t) ? '' : t),
       onState: on => {
         document.body.classList.toggle('incall', on);
         $('callBtn').classList.toggle('on', on);
