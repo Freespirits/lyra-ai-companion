@@ -65,6 +65,7 @@ export class Avatar {
     this.winkT = 0; this.lid = 0;
     this.gazeCur = { x: 0, y: 0 };
     this.sacc = { next: 0, home: true, tx: 0, ty: 0 };
+    this.userGaze = { x: 0, y: 0, t: 0 };   /* where YOU are in her view (face tracking) */
     this.wordBob = 0; this.jaw = 0;         /* audio-energy jaw fallback */
     /* subconscious life layer: micro-events independent of the state machine */
     this.micro = {
@@ -274,6 +275,10 @@ export class Avatar {
     else if (name === 'devoted') { this.micro.breathBoost = 1; this.microExpression('happy', .3, 1.4); }
     else if (name === 'fierce') this.microExpression('surprised', .25, .5);
   }
+  /* face tracking: her eyes follow you around the frame */
+  setUserGaze(nx, ny) {
+    this.userGaze.x = nx; this.userGaze.y = ny; this.userGaze.t = performance.now();
+  }
   wink() { this.winkT = .5; }
   bobPulse() { this.wordBob = 1; }
 
@@ -360,9 +365,13 @@ export class Avatar {
         this.sacc.home = true;
         this.sacc.next = now + 700 + Math.random() * 2300;
       }
+      /* home fixation tracks YOUR position when the camera sees you */
+      const gu = this.userGaze;
+      const trackUser = this.sacc.home && now - gu.t < 3000;
+      const hx = trackUser ? gu.x * .4 : 0, hy = trackUser ? gu.y * .25 : 0;
       /* the jump itself is instantaneous: that's what reads as alive */
-      this.gazeCur.x = blend.gaze.x + this.sacc.tx;
-      this.gazeCur.y = blend.gaze.y + AD.gazeY * aw + this.sacc.ty;
+      this.gazeCur.x = blend.gaze.x + hx + this.sacc.tx;
+      this.gazeCur.y = blend.gaze.y + hy + AD.gazeY * aw + this.sacc.ty;
     }
     /* micro-drift during fixation (eyes only; kept tiny so nothing shivers) */
     this.gazeCur.x += (Math.random() - .5) * .0015;

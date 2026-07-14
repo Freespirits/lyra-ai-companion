@@ -5,6 +5,7 @@ import { streamChat, SegmentPlayer } from './stream.js';
 import { SceneManager } from './scenes.js';
 import { CallLoop } from './call.js';
 import { Ears } from './ears.js';
+import { VisionSense } from './vision.js';
 
 const $ = id => document.getElementById(id);
 const logEl = $('log'), inp = $('inp'), fxEl = $('fx');
@@ -15,7 +16,8 @@ const capUser = $('capUser'), capLyra = $('capLyra'), statusEl = $('status'), ti
 const S = { IDLE: 'idle', LISTEN: 'listening', THINK: 'thinking', SPEAK: 'speaking' };
 let state = S.IDLE, busy = false, exchanges = 0;
 let turn = 0;                       /* monotonic turnId; newer turns override older */
-let avatar = null, anim = null, ears = null, sceneMgr = null, call = null;
+let avatar = null, anim = null, ears = null, sceneMgr = null, call = null, vision = null;
+let lastProactiveAt = 0, lastSeenExpression = 'neutral';
 let player = null;                  /* SegmentPlayer for the current turn */
 const history = [];
 let avatars = [], currentAvatarUrl = null;
@@ -325,6 +327,7 @@ async function handleUser(text, opts = {}) {
     let full = '';
     await streamChat({
       messages: history.slice(), turnId: myTurn,
+      context: vision && vision.note ? '[seen through the camera: ' + vision.note + ']' : '',
       onEvent: ev => {
         if (myTurn !== turn) return;
         if (ev.type === 'seg') myPlayer.addSeg(ev);
@@ -425,6 +428,30 @@ async function boot() {
       onUserStopped: () => { if (call) call.noteUserStopped(); },
       onBackchannel: () => !!(anim && state === S.LISTEN && anim.oneShot('acknowledge')),
       onError: msg => toast(msg),
+    });
+
+    /* vision: she sees you. Notes ride into chat turns; expression changes
+       trigger subconscious reactions; face position steers her gaze. */
+    vision = new VisionSense({
+      onGaze: (nx, ny) => avatar.setUserGaze(nx, ny),
+      onError: msg => { toast(msg); $('visionBtn').classList.remove('on'); },
+      onVision: v => {
+        if (v.proximity === 'close') avatar.microLean(1.6);
+        if (v.expression === 'happy' && lastSeenExpression !== 'happy') avatar.nudgeMood('happy', .35);
+        if (v.expression === 'surprised') avatar.nudgeMood('surprised', .3);
+        if (v.expression === 'sad' && lastSeenExpression !== 'sad') {
+          avatar.setAffect('devoted');            /* comfort before a word is said */
+          avatar.nudgeMood('sad', .3);
+        }
+        /* the magic beat: she notices a real change and says something first */
+        const changed = v.expression !== lastSeenExpression;
+        lastSeenExpression = v.expression;
+        if (changed && ['sad', 'tired', 'happy'].includes(v.expression) &&
+            !busy && Date.now() - lastProactiveAt > 120000) {
+          lastProactiveAt = Date.now();
+          handleUser('(Through the camera you just noticed: ' + v.note + '. React briefly and naturally to what you see.)', { hidden: true });
+        }
+      },
     });
 
     call = new CallLoop({
@@ -534,6 +561,18 @@ setInterval(() => {
   }
 }, 1000);
 
+$('visionBtn').addEventListener('click', async () => {
+  if (vision.running) {
+    vision.stop();
+    $('visionBtn').classList.remove('on');
+    toast('She can no longer see you');
+  } else {
+    if (await vision.start()) {
+      $('visionBtn').classList.add('on');
+      toast('She can see you now 👁');
+    }
+  }
+});
 $('camBtn').addEventListener('click', () => {
   camMode = camMode === 'full' ? 'close' : 'full';
   avatar && avatar.frame(camMode);

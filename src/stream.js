@@ -4,10 +4,10 @@
    being generated, driving visemes, captions, and mood along the way. */
 import { lip, playAudio, browserSpeak, stopSpeaking } from './speech.js';
 
-export async function streamChat({ messages, turnId, onEvent }) {
+export async function streamChat({ messages, turnId, context, onEvent }) {
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, turnId }),
+    body: JSON.stringify({ messages, turnId, context: context || '' }),
   });
   if (!res.ok || !res.body) throw new Error('API ' + res.status);
   const reader = res.body.getReader();

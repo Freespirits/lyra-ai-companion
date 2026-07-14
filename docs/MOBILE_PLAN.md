@@ -1,9 +1,17 @@
 # Lyra Mobile — iOS & Android plan
 
-Goal: the full companion call experience (3D body, hands-free voice, emotional
-v3 speech, scenes, affects, attachments) as a native app, with the user free to
+Goal: the full companion call experience as a native app, with the user free to
 plug in **any brain**: Claude, ChatGPT, Gemini, Ollama, or a local model — via
 API key *or* their existing consumer subscription where legitimately possible.
+
+Everything the web app already does ports with it (this list is the feature
+parity checklist): hands-free call loop with VAD barge-in + transcript echo
+filter, streaming tag protocol (audio tags, affects, 13 mocap gestures,
+scene/avatar/remember directives), sentence-pipelined ElevenLabs v3 with exact
+lip sync, 15 scenes (video on an aspect-true cinema segment with ducked
+ambience audio, GLSL animated skies, 360° photos), 5 swappable bodies, typed
+persistent memory with reflection + semantic recall, attachments, and the
+**vision sense** (§3a).
 
 ## 1. Two-phase strategy
 
@@ -83,6 +91,24 @@ processing on iOS, AudioManager MODE_IN_COMMUNICATION on Android) gives
 hardware echo cancellation — the speaker/mic echo gate gets easier than web.
 Background mode: continue the call screen-off (audio background entitlement).
 
+### 3a. Vision sense (she sees you)
+
+The web app's pipeline ports directly and gets *better* on mobile:
+- **Frame capture**: front camera → downscaled JPEG every ~5s → vision-capable
+  brain (Claude / Gemini / GPT-4o / Ollama vision) → `{note, expression,
+  proximity}`. The note rides into the next turn as
+  `[seen through the camera: ...]`; expression changes trigger subconscious
+  affect/mood shifts and occasional proactive lines (rate-limited).
+- **Gaze tracking**: on mobile, replace the web's FaceDetector with **ARKit
+  face tracking (iOS)** / **ML Kit Face Detection (Android)** — both free,
+  on-device, 60fps, and far better than anything in the browser: real gaze
+  following, plus expression blendshapes (ARKit gives smile/frown/jaw values
+  directly — the "user is smiling" signal without any LLM call).
+- Privacy: frames are analyzed and discarded, nothing persists; camera use is
+  a visible toggle with the OS indicator. On-device expression detection
+  (ARKit/ML Kit) can replace most LLM vision calls to cut cost and latency —
+  send a frame to the big model only on meaningful change.
+
 ## 4. Attachments (+)
 
 Same protocol as the web app (this repo, `normalizeAttachments`):
@@ -126,4 +152,6 @@ Same protocol as the web app (this repo, `normalizeAttachments`):
 2. **M1 (2–3w):** native STT tier (OS dictation), on-device session core, provider settings screen. Ship internal beta.
 3. **M2 (2w):** WhisperKit/whisper.cpp + Silero VAD; Deepgram tier; attachments.
 4. **M3 (2w):** desktop-relay pairing (QR + Tailscale) → subscription providers on phone; polish, store submission.
-5. **M4 (later):** Unity renderer if WebView perf demands it; history sync.
+5. **M3.5 (1w):** vision sense — camera toggle, ARKit/ML Kit gaze + expression,
+   frame-to-brain pipeline with on-device change detection.
+6. **M4 (later):** Unity renderer if WebView perf demands it; history sync.

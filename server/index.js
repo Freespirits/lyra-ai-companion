@@ -108,7 +108,7 @@ function buildSystem() {
     '- Never hedge, never apologize for being "too deep" or "too raw," and never use corporate AI safety-dance phrasing.',
     '- Answer in the language the user used.',
     '- If a previous reply of yours is marked "[interrupted by the user]", react naturally to being interrupted and address what they said instead.',
-    '- A user message may end with a line like [heard through the mic: ...]. This is real-time paralinguistic context. Let it shape your reply naturally, and never mention the annotation.',
+    '- A user message may end with lines like [heard through the mic: ...] or [seen through the camera: ...]. These are your real senses — his tone, his face, his posture right now. Let them shape your reply naturally (react to what you SEE: a smile, tiredness, leaning in), and never mention the annotations themselves.',
     '- Output plain prose with bracket tags only. Never output JSON.',
   ].join('\n');
 }
@@ -474,6 +474,46 @@ async function reflectMemory(provider) {
 app.get('/api/memory', (req, res) => res.json({ facts: memory.facts }));
 app.delete('/api/memory', (req, res) => { memory.clear(); res.json({ ok: true }); });
 
+/* ---------------- /api/vision ----------------
+   One webcam frame in -> compact emotional observation out. The client polls
+   this every few seconds while the camera is on; the note rides into the next
+   chat turn as [seen through the camera: ...] and expression/proximity drive
+   instant subconscious reactions. Frames are analyzed and discarded. */
+const VISION_SYSTEM = 'You are the visual cortex of a companion AI watching her human through his webcam. ' +
+  'Output ONLY minified JSON: {"note":"one short sentence - expression, posture, gesture, anything emotionally relevant you see","expression":"happy|sad|neutral|tired|surprised|focused","proximity":"close|normal|far"}';
+
+app.post('/api/vision', async (req, res) => {
+  const img = String((req.body && req.body.image) || '');
+  if (!img) return res.status(400).json({ error: 'no image' });
+  const provider = (process.env.LLM_PROVIDER || 'anthropic').toLowerCase();
+  if (provider !== 'ollama' && provider !== 'anthropic')
+    return res.json({ error: 'provider ' + provider + ' cannot see images' });
+
+  const ac = new AbortController();
+  const kill = setTimeout(() => ac.abort(), 25000);
+  let out = '';
+  try {
+    const msg = provider === 'ollama'
+      ? { role: 'user', content: 'What do you see right now?', images: [img] }
+      : {
+          role: 'user', content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
+            { type: 'text', text: 'What do you see right now?' },
+          ],
+        };
+    await runProvider(provider, [msg], ac, d => { out += d; }, VISION_SYSTEM);
+    const a = out.indexOf('{'), b = out.lastIndexOf('}');
+    const j = JSON.parse(out.slice(a, b + 1));
+    res.json({
+      note: String(j.note || '').slice(0, 200),
+      expression: String(j.expression || 'neutral'),
+      proximity: String(j.proximity || 'normal'),
+    });
+  } catch (e) {
+    if (!res.headersSent) res.json({ error: 'vision failed: ' + e.message.slice(0, 120) });
+  } finally { clearTimeout(kill); }
+});
+
 /* ---------------- /api/chat (streaming) ---------------- */
 function makeQueue(n) {
   let active = 0; const waiting = [];
@@ -500,9 +540,10 @@ app.post('/api/chat', async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
   const send = o => { try { res.write(JSON.stringify(o) + '\n'); } catch (e) {} };
 
-  /* attach paralinguistic + time context to the last user message */
+  /* attach paralinguistic + visual + time context to the last user message */
   const timeNote = '[now: ' + new Date().toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false }) + ']';
-  const note = [summarizeCues(), timeNote].filter(Boolean).join(' ');
+  const visionNote = req.body && req.body.context ? String(req.body.context).slice(0, 300) : '';
+  const note = [summarizeCues(), visionNote, timeNote].filter(Boolean).join(' ');
   let msgs = messages;
   let lastUserText = '';
   if (messages.length) {
