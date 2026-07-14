@@ -558,7 +558,7 @@ app.post('/api/chat', async (req, res) => {
      characters actually differ (best-effort; competes with the agent's own config). */
   if (provider === 'openclaw' && msgs.length) {
     const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');
-    const boundary = guardOn ? ' Keep it suggestive and romantic at most — flirtation, tension, teasing, longing — but NEVER graphic or sexually explicit and never describe sexual acts; fade to a knowing pause instead. Refuse anything harmful.' : '';
+    const boundary = guardOn ? ' Keep it SWEET and warm, never steamy: affection, gentle playful teasing, genuine care and charm — but no sexual tension, no come-ons, no innuendo, and nothing graphic or explicit. Tender and charming, not sultry or seductive. Refuse anything harmful.' : '';
     const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + boundary
       + ' Write ONLY her spoken words — no stage directions, no parentheses, no asterisks, no narration; her body and expressions are performed for you.]';
     for (let i = msgs.length - 1; i >= 0; i--) {
