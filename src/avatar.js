@@ -99,7 +99,7 @@ export class Avatar {
     /* soft image-based fill so forms gain gentle volume under the cel shading;
        kept low so the toon look dominates (MToon ignores it; standard parts —
        eyes, accessories — benefit) */
-    try {
+    if (initialTier() !== 'off') try {
       const pmrem = new THREE.PMREMGenerator(r);
       this.scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
       this.scene.environmentIntensity = .35;
@@ -185,7 +185,11 @@ export class Avatar {
     this.scene.add(vrm.scene);
     VRMUtils.rotateVRM0(vrm);
     vrm.scene.traverse(o => { o.frustumCulled = false; });
-    try { applyCelMaterials(vrm, this.renderer); } catch (e) { console.warn('[lyra] cel materials skipped:', e); }
+    /* cel material tuning only when the FX stack is on; 'off' = untouched
+       original VRM look (the known-good baseline) */
+    if (this.postfx && this.postfx.tier !== 'off') {
+      try { applyCelMaterials(vrm, this.renderer); } catch (e) { console.warn('[lyra] cel materials skipped:', e); }
+    }
 
     const hb = n => { try { return vrm.humanoid.getNormalizedBoneNode(n); } catch (e) { return null; } };
     this.bones = {

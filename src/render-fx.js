@@ -30,7 +30,10 @@ export const TIERS = ['off', 'low', 'medium', 'high', 'full'];
    model already ships them (respecting the author) or given a thin default so we
    never draw ink lines the model wasn't built for in a way that looks wrong.
    `rim` is a THREE.Color the scene manager can retint later. */
-export const CEL = { toony: .95, shift: -.08, rimMix: .55, rimColor: 0x9fb6ff, rimLift: .10, outline: .0009 };
+/* rim is WHITE (a bright edge glow, no hue) at a low mix — a coloured rim
+   compounds with tinted scenes (e.g. night-city's blue lights) and dyes the
+   whole character that colour. White stays neutral and picks up the scene. */
+export const CEL = { toony: .95, shift: -.08, rimMix: .22, rimColor: 0xffffff, rimLift: .04, outline: .0009 };
 
 export function applyCelMaterials(vrm, renderer) {
   const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
@@ -136,7 +139,10 @@ function detectTier() {
   return 'full';
 }
 
-/* explicit override wins: ?fx=<tier> > localStorage('lyra-fx') > auto-detect */
+/* explicit override wins: ?fx=<tier> > localStorage('lyra-fx').
+   Default is 'off' (pixel-identical to the original render) until the cel look
+   is tuned with live visual feedback — auto-detect is available via detectTier
+   but not used as the default yet. */
 export function initialTier() {
   try {
     const q = new URLSearchParams(location.search).get('fx');
@@ -144,7 +150,7 @@ export function initialTier() {
     const ls = localStorage.getItem('lyra-fx');
     if (ls && TIERS.includes(ls)) return ls;
   } catch (e) {}
-  return detectTier();
+  return 'off';
 }
 
 export class PostFX {
