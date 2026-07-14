@@ -14,3 +14,4 @@ public/models/*.vrm
 public/animations/*.fbx
 vite.config.js.timestamp-*
 Lyra.apk
+server/.scratch/
