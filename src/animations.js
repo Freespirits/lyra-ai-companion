@@ -180,6 +180,7 @@ export class AnimController {
           if (onProgress) onProgress(f);
         } catch (e) {
           failed.push(real + ' (' + (e && e.message || e) + ')');
+          console.warn('[lyra mocap] FAIL', real, '—', (e && e.message) || e);
         }
       }
     }
