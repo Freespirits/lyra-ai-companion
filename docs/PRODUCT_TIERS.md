@@ -25,6 +25,16 @@ config flowing through the server-address + config layer.
 | **2 — Hosted / VPS** | No capable PC needed; always-on; phone access. Subscription. | Our VPS + thin client | Hybrid: managed default + BYO key | VPS + inference | **Deferred** — own spec later |
 | **3 — Premium** | Tier 2 **+ ElevenLabs voices + full Character Builder** | Our VPS | ElevenLabs + editor | + ElevenLabs | **Deferred** |
 
+**Tier-3 voice candidate — Sesame CSM-1B (hosted only).** The open conversational
+speech model behind Maya. Deliberately **not** in the Tier-1 installer: it's a
+GPU + PyTorch/CUDA dependency that breaks the pure-JS "installs anywhere" property,
+and it emits no word timestamps (so exact lip-sync needs a separate forced-alignment
+pass — the one thing Lyra is best at). Its natural home is the **hosted VPS**, where
+we own the GPU and the Python stack is a server concern, making a "Sesame-quality
+conversational voice" a genuine premium differentiator. Kokoro already fills the
+free *local* voice slot at a fraction of the setup cost. Revisit CSM when Tier 2/3
+GPU hosting exists.
+
 Cost model for the paid tiers (decided): **Hybrid** — managed usage included up
 to a fair-use cap, with a bring-your-own-key option for heavy users / cost
 control. (Most billing complexity; best UX. Long-term target, not near-term.)
