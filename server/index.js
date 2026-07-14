@@ -623,6 +623,7 @@ app.post('/api/chat', async (req, res) => {
   const ttsJobs = [];
   let segIdx = 0, full = '';
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
+  let guardCtx = '';                             /* accumulated cleared text — vet in context so explicit content can't hide by splitting across segments */
   const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
   const modelGuardOn = provider === 'openclaw' && !!guardModelName();
   let emitChain = Promise.resolve();             /* per-segment guard is async but must stay in order */
@@ -654,19 +655,21 @@ app.post('/api/chat', async (req, res) => {
     if (provider === 'openclaw') text = stripStage(text);   /* agent narrates in parens; don't voice it */
     const p = parseSegment(text);
     if (!p.caption) { speakParsed(p); return; }   /* pure-directive: fire ctl events, nothing to vet */
-    if (guardOn && moderate(p.caption).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
+    const combined = (guardCtx + ' ' + p.caption).trim().slice(-4000);   /* vet in running context, not one isolated sentence */
+    if (guardOn && moderate(combined).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
     if (modelGuardOn) {
       let blocked = false;
       try {
         const gac = new AbortController();
         const timer = setTimeout(() => gac.abort(), 12000);
-        blocked = (await moderateWithModel(lastUserText, p.caption, { signal: gac.signal })).blocked;
+        blocked = (await moderateWithModel(lastUserText, combined, { signal: gac.signal })).blocked;
         clearTimeout(timer);
       } catch (e) { blocked = true; }             /* fail-closed */
       if (guardTripped) return;
       if (blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
     }
     if (guardTripped) return;
+    guardCtx = combined;                          /* accept into context only after it passed */
     speakParsed(p);
   };
 
