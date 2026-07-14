@@ -1,0 +1,12 @@
+{
+  "appId": "com.freespirits.lyra",
+  "appName": "Lyra",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

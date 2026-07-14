@@ -4,6 +4,8 @@
    maps returned cues onto instant avatar reactions: reacting WHILE the
    user makes sound, not after the text arrives. */
 
+import { WS } from './config.js';
+
 function detectPitch(buf, sr) {
   let rms = 0;
   for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
@@ -52,8 +54,7 @@ export class Ears {
     const buf = new Float32Array(analyser.fftSize);
     const sr = this.ctx.sampleRate;
 
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    this.ws = new WebSocket(proto + '://' + location.host + '/ears');
+    this.ws = new WebSocket(WS('/ears'));
     this.ws.onmessage = e => {
       try { this.react(JSON.parse(e.data)); } catch (err) {}
     };

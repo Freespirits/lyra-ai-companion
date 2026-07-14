@@ -9,6 +9,8 @@
    register as user speech). That's what makes open-mic + open-speakers
    workable; headphones make it perfect.                                   */
 
+import { WS } from './config.js';
+
 const COMMIT_MS = 900;        /* quiet time that ends an utterance */
 const VAD_FRESH_MS = 1800;    /* how recent a VAD voice cue must be to accept STT while she talks */
 
@@ -67,8 +69,7 @@ export class CallLoop {
 
   _spinDg() {
     if (!this.running) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = this.ws = new WebSocket(proto + '://' + location.host + '/stt?lang=' + encodeURIComponent(this.o.lang()));
+    const ws = this.ws = new WebSocket(WS('/stt?lang=' + encodeURIComponent(this.o.lang())));
     ws.onopen = () => {
       try {
         const rec = this.recorder = new MediaRecorder(this.media, { mimeType: 'audio/webm;codecs=opus' });

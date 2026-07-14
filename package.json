@@ -9,6 +9,9 @@
     "assets": "node scripts/fetch-assets.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@pixiv/three-vrm": "^3.5.5",
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",

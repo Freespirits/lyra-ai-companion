@@ -7,6 +7,8 @@
      your face position is tracked several times a second and her eyes
      follow you around the frame. Degrades silently when unavailable. */
 
+import { API } from './config.js';
+
 const FRAME_EVERY_MS = 5000;
 const GAZE_EVERY_MS = 300;
 
@@ -72,7 +74,7 @@ export class VisionSense {
     if (!url) return;
     this.busy = true;
     try {
-      const r = await fetch('/api/vision', {
+      const r = await fetch(API('/api/vision'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: url.slice(url.indexOf(',') + 1) }),
       });

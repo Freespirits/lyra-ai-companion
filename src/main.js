@@ -6,6 +6,7 @@ import { SceneManager } from './scenes.js';
 import { CallLoop } from './call.js';
 import { Ears } from './ears.js';
 import { VisionSense } from './vision.js';
+import { API } from './config.js';
 
 const $ = id => document.getElementById(id);
 const logEl = $('log'), inp = $('inp'), fxEl = $('fx');
@@ -58,7 +59,7 @@ function pingAura() {
   const now = Date.now();
   if (now - auraLast < 250) return;
   auraLast = now;
-  fetch('/api/aura', {
+  fetch(API('/api/aura'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ state, emotion: avatar ? avatar.emotion : 'neutral' }),
   }).catch(() => {});
@@ -260,7 +261,7 @@ function bargeIn() {
   speakEndAt = Date.now();
   const wasBusy = busy || state === S.SPEAK;
   const spoken = player ? player.stop() : '';
-  fetch('/api/interrupt', {
+  fetch(API('/api/interrupt'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ before: turn }),
   }).catch(() => {});
@@ -480,9 +481,9 @@ async function boot() {
 
     loadMsg.textContent = 'Finding her...';
     const [avRes, scInit, hlRes] = await Promise.allSettled([
-      fetch('/api/avatars').then(r => r.json()),
+      fetch(API('/api/avatars')).then(r => r.json()),
       sceneMgr.init(),
-      fetch('/api/health').then(r => r.json()),
+      fetch(API('/api/health')).then(r => r.json()),
     ]);
     if (hlRes.status === 'fulfilled' && hlRes.value.stt === 'deepgram') call.engine = 'deepgram';
     avatars = avRes.status === 'fulfilled' ? (avRes.value.avatars || []) : [];
@@ -505,7 +506,7 @@ async function boot() {
     markAvatarPicker();
 
     /* think-gap sounds: cached server-side, fetched lazily */
-    fetch('/api/fillers').then(r => r.json()).then(j => { fillers = j.clips || []; }).catch(() => {});
+    fetch(API('/api/fillers')).then(r => r.json()).then(j => { fillers = j.clips || []; }).catch(() => {});
 
     loadEl.style.display = 'none';
     renderHearts();

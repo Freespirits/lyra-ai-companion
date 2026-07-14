@@ -3,6 +3,7 @@
    Retarget math adapted from the MIT-licensed @pixiv/three-vrm Mixamo example. */
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { API } from './config.js';
 
 /* Mixamo rig name -> VRM humanoid bone name */
 export const MIXAMO_VRM_MAP = {
@@ -154,7 +155,7 @@ export class AnimController {
        ("Idle.fbx" on disk still fills the "idle.fbx" slot) */
     let onDisk = null;
     try {
-      const r = await fetch('/api/animations');
+      const r = await fetch(API('/api/animations'));
       onDisk = new Map(((await r.json()).files || []).map(f => [f.toLowerCase(), f]));
     } catch (e) { /* no backend: try the manifest names as-is */ }
     for (const [state, files] of Object.entries(MANIFEST)) {

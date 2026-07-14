@@ -4,6 +4,7 @@
    Switching is safe mid-speech; both the UI and the LLM's [scene:name]
    directive land here. */
 import * as THREE from 'three';
+import { API } from './config.js';
 
 const SKY_RADIUS = 30;
 const FADE_SPEED = 1.1;      /* opacity units per second */
@@ -230,7 +231,7 @@ export class SceneManager {
 
   async init(startName) {
     try {
-      const r = await fetch('/api/scenes');
+      const r = await fetch(API('/api/scenes'));
       this.scenes = (await r.json()).scenes || [];
     } catch (e) { this.scenes = []; }
     if (this.scenes.length) await this.apply(startName || this.scenes[0].name, 0);

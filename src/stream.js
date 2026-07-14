@@ -3,9 +3,10 @@
    plays synthesized segments strictly in order while later ones are still
    being generated, driving visemes, captions, and mood along the way. */
 import { lip, playAudio, browserSpeak, stopSpeaking } from './speech.js';
+import { API } from './config.js';
 
 export async function streamChat({ messages, turnId, context, onEvent }) {
-  const res = await fetch('/api/chat', {
+  const res = await fetch(API('/api/chat'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, turnId, context: context || '' }),
   });
