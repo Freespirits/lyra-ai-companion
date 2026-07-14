@@ -437,9 +437,11 @@ async function boot() {
       onGaze: (nx, ny) => avatar.setUserGaze(nx, ny),
       onError: msg => {
         toast(msg);
-        $('visionBtn').classList.remove('on');
-        $('selfView').classList.remove('show');
-        $('selfView').srcObject = null;
+        if (!vision || !vision.running) {
+          $('visionBtn').classList.remove('on');
+          $('selfWrap').classList.remove('show');
+          $('selfView').srcObject = null;
+        }
       },
       onVision: v => {
         if (v.proximity === 'close') avatar.microLean(1.6);
@@ -486,6 +488,11 @@ async function boot() {
       fetch(API('/api/health')).then(r => r.json()),
     ]);
     if (hlRes.status === 'fulfilled' && hlRes.value.stt === 'deepgram') call.engine = 'deepgram';
+    if (hlRes.status !== 'fulfilled') {
+      const srv = localStorage.getItem('lyra-server') || '(same origin)';
+      addLog('sys', 'Cannot reach the Lyra server at ' + srv + '. She will render, but no brain, voice, or scenes. Open the chat drawer → Settings & debug → fix the Server address (PC on Wi-Fi: http://192.168.1.101:8686, Tailscale: http://100.121.97.82:8686), make sure npm run dev is running.');
+      setTimeout(() => { toast('Server unreachable — check drawer settings'); $('drawer').classList.add('open'); }, 1500);
+    }
     avatars = avRes.status === 'fulfilled' ? (avRes.value.avatars || []) : [];
     const first = avatars.find(a => a.name === 'lyra') || avatars[0];
     currentAvatarUrl = first ? first.url : '/models/lyra.vrm';
@@ -568,11 +575,11 @@ setInterval(() => {
 }, 1000);
 
 $('visionBtn').addEventListener('click', async () => {
-  const sv = $('selfView');
+  const sv = $('selfView'), wrap = $('selfWrap');
   if (vision.running) {
     vision.stop();
     $('visionBtn').classList.remove('on');
-    sv.classList.remove('show');
+    wrap.classList.remove('show');
     sv.srcObject = null;
     toast('She can no longer see you');
   } else {
@@ -580,12 +587,22 @@ $('visionBtn').addEventListener('click', async () => {
       $('visionBtn').classList.add('on');
       sv.srcObject = vision.stream;
       sv.play().catch(() => {});
-      sv.classList.add('show');
+      wrap.classList.add('show');
+      wrap.classList.toggle('rear', vision.facing === 'environment');
+      wrap.classList.toggle('multi', await vision.hasMultipleCameras());
       toast('She can see you now 👁');
     }
   }
 });
-$('selfView').addEventListener('click', () => $('selfView').classList.toggle('mini'));
+$('selfView').addEventListener('click', () => $('selfWrap').classList.toggle('mini'));
+$('flipCam').addEventListener('click', async e => {
+  e.stopPropagation();
+  const facing = await vision.flip();
+  $('selfView').srcObject = vision.stream;
+  $('selfView').play().catch(() => {});
+  $('selfWrap').classList.toggle('rear', facing === 'environment');
+  toast(facing === 'user' ? 'Front camera — she sees you' : 'Rear camera — she sees what you see');
+});
 $('camBtn').addEventListener('click', () => {
   camMode = camMode === 'full' ? 'close' : 'full';
   avatar && avatar.frame(camMode);
@@ -604,6 +621,12 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.picker') && !e.target.closest('#sceneBtn') && !e.target.closest('#avatarBtn')) closePickers();
 });
 $('chatBtn').addEventListener('click', () => $('drawer').classList.add('open'));
+$('srvInp').value = localStorage.getItem('lyra-server') || '';
+$('srvSave').addEventListener('click', () => {
+  const v = $('srvInp').value.trim();
+  if (v && !/^https?:\/\//.test(v)) { toast('Address must start with http://'); return; }
+  window.lyraSetServer(v);   /* saves + reloads */
+});
 $('drawerClose').addEventListener('click', () => $('drawer').classList.remove('open'));
 
 document.querySelectorAll('#exprRow button').forEach(b => {

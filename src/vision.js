@@ -21,6 +21,7 @@ export class VisionSense {
     this.busy = false;
     this.detector = null;
     this.lastNote = ''; this.lastExpression = 'neutral'; this.lastAt = 0;
+    this.facing = 'user';   /* 'user' (front, mirrored) | 'environment' (rear) */
   }
 
   get note() { return Date.now() - this.lastAt < 20000 ? this.lastNote : ''; }
@@ -29,7 +30,7 @@ export class VisionSense {
     if (this.running) return true;
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: { width: 640, height: 480, facingMode: this.facing },
       });
     } catch (e) { this.h.onError && this.h.onError('Camera permission denied.'); return false; }
     this.video = document.createElement('video');
@@ -57,6 +58,33 @@ export class VisionSense {
     clearInterval(this.frameTimer); clearInterval(this.gazeTimer);
     if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
     this.video = null; this.lastNote = '';
+  }
+
+  /* front <-> rear, keeping timers and analysis running */
+  async flip() {
+    if (!this.running) return this.facing;
+    const want = this.facing === 'user' ? 'environment' : 'user';
+    try {
+      const next = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: { exact: want } },
+      });
+      this.stream.getTracks().forEach(t => t.stop());
+      this.stream = next;
+      this.facing = want;
+      this.video.srcObject = next;
+      await this.video.play().catch(() => {});
+    } catch (e) {
+      this.h.onError && this.h.onError('No ' + want + ' camera here.');
+    }
+    return this.facing;
+  }
+
+  /* more than one camera on this device? (controls the flip button) */
+  async hasMultipleCameras() {
+    try {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      return devs.filter(d => d.kind === 'videoinput').length > 1;
+    } catch (e) { return false; }
   }
 
   _grab(w) {
@@ -92,8 +120,9 @@ export class VisionSense {
       const faces = await this.detector.detect(this.video);
       if (!faces.length) return;
       const b = faces[0].boundingBox;
-      /* normalized -1..1; webcam is mirrored so flip x for "follow you" */
-      const nx = -(((b.x + b.width / 2) / this.video.videoWidth) * 2 - 1);
+      /* normalized -1..1; the front camera is mirrored so x flips */
+      const mir = this.facing === 'user' ? -1 : 1;
+      const nx = mir * (((b.x + b.width / 2) / this.video.videoWidth) * 2 - 1);
       const ny = -(((b.y + b.height / 2) / this.video.videoHeight) * 2 - 1);
       this.h.onGaze && this.h.onGaze(nx, ny);
     } catch (e) { /* detector hiccup: ignore */ }
