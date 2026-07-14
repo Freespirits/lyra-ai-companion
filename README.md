@@ -9,6 +9,18 @@ an inline tag protocol, ElevenLabs v3 emotional speech, generated video scenes,
 live body swapping, mocap animation, a continuously simmering mood system, and
 typed persistent memory with reflection.
 
+![Neon field](docs/media/scene-neon-field.png)
+
+| | | |
+|---|---|---|
+| ![Sakura](docs/media/scene-sakura.png) | ![Rooftop](docs/media/scene-rooftop.png) | ![Bedroom](docs/media/scene-bedroom.png) |
+| ![Gothic library](docs/media/scene-gothic-library.png) | ![Living cosmos](docs/media/scene-cosmos-live.png) | ![Body swap](docs/media/body-vesper-sakura.png) |
+| ![Teasing affect](docs/media/affect-teasing.png) | ![Devoted affect](docs/media/affect-devoted.png) | ![Call UI](docs/media/call-ui.png) |
+
+*Live word-synced captions, a breathing state halo, [affect:teasing] smirks and
+[affect:devoted] soft eyes, scenes she switches mid-sentence, and bodies she
+can change without dropping the call.*
+
 ```
 Browser (Vite, three.js + three-vrm)             Node backend (Express)
   call loop: VAD endpointing + continuous STT -> /api/chat (NDJSON stream)
@@ -145,6 +157,14 @@ prosody frames feed the backend cue engine (`server/ears.js`): laughs make her
 smile before you type a word, sighs get a concerned tilt, long silences a weight
 shift; cues are also folded into the next LLM call as
 `[heard through the mic: ...]` context.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md) — read it, run it, learn from it,
+build on it for anything personal. **Commercial use requires a license from the
+author** ([@Freespirits](https://github.com/Freespirits)). Bundled third-party
+assets keep their own licenses (Polyhaven photos are CC0; VRoid sample bodies
+and Mixamo clips are fetched locally and stay under their own terms).
 
 ## Where to take it next
 
