@@ -22,6 +22,7 @@ let avatars = [], currentAvatarUrl = null;
 let fillers = [], fillerTimer = 0;
 let camMode = 'full';
 let speakEndAt = 0;   /* echo gate: room reverb of her voice outlives the audio */
+let userSceneTurn = -1;   /* manual scene pick wins over her [scene:] directives this turn */
 const avatarTalking = () =>
   state === S.SPEAK || (player && player.active) || Date.now() - speakEndAt < 600;
 
@@ -248,7 +249,10 @@ function handleCtl(ev) {
   if (ev.kind === 'gesture') doGesture(ev.name);
   else if (ev.kind === 'affect') avatar.setAffect(ev.name);
   else if (ev.kind === 'remember') { toast('She’ll remember that ♥'); spawnFx('hearts'); }
-  else if (ev.kind === 'scene') { if (sceneMgr.apply(ev.name)) markScenePicker(ev.name); }
+  else if (ev.kind === 'scene') {
+    if (turn === userSceneTurn) return;   /* you picked a scene mid-reply: yours wins */
+    sceneMgr.apply(ev.name).then(ok => { if (ok) markScenePicker(ev.name); });
+  }
   else if (ev.kind === 'avatar') swapAvatar(ev.name);
 }
 
@@ -435,7 +439,7 @@ async function boot() {
     else addLog('sys', 'No mocap clips found in public/animations/. Running on the procedural fallback; see the README for the Mixamo clip list.');
 
     buildPicker($('scenePicker'), sceneMgr.scenes, sceneMgr.current && sceneMgr.current.name,
-      it => sceneMgr.apply(it.name));
+      it => { userSceneTurn = turn; sceneMgr.apply(it.name).then(() => markScenePicker(it.name)); });
     buildPicker($('avatarPicker'), avatars, null, it => swapAvatar(it.name));
     markAvatarPicker();
 

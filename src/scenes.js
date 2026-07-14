@@ -271,40 +271,63 @@ export class SceneManager {
         tex = capTexture(tex);
       } catch (e) { tex = null; }
     }
-    let mat;
-    if (tex) {
-      mat = new THREE.MeshBasicMaterial({
-        map: tex, side: THREE.BackSide, transparent: true,
-        opacity: fade === 0 ? 1 : 0, depthWrite: false,
-      });
+    const group = new THREE.Group();
+    const mats = [];
+    const startOp = fade === 0 ? 1 : 0;
+    const addMesh = (geom, mat, order) => {
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.renderOrder = order;
+      group.add(mesh); mats.push(mat);
+    };
+
+    if (video && tex) {
+      /* a flat video wrapped around a full sphere stretches into mush — show
+         it on a curved cinema segment at its true aspect, over a dark backdrop */
+      addMesh(new THREE.SphereGeometry(SKY_RADIUS, 32, 16),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(def.lighting ? def.lighting.amb[0] : '#14101f').multiplyScalar(.16),
+          side: THREE.BackSide, transparent: true, opacity: startOp, depthWrite: false,
+        }), -1001);
+      const aspect = (video.videoWidth || 21) / (video.videoHeight || 9);
+      const phiLen = 2.5;                               /* ~143° horizontal arc */
+      const thetaLen = Math.min(2.4, phiLen / aspect);  /* keep the frame's aspect */
+      addMesh(new THREE.SphereGeometry(SKY_RADIUS * .96, 48, 32,
+          Math.PI / 2 - phiLen / 2, phiLen, (Math.PI - thetaLen) / 2, thetaLen),
+        new THREE.MeshBasicMaterial({
+          map: tex, side: THREE.BackSide, transparent: true, opacity: startOp, depthWrite: false,
+        }), -1000);
+    } else if (tex) {
+      addMesh(new THREE.SphereGeometry(SKY_RADIUS, 48, 32),
+        new THREE.MeshBasicMaterial({
+          map: tex, side: THREE.BackSide, transparent: true, opacity: startOp, depthWrite: false,
+        }), -1000);
     } else if (def.procedural && def.procedural.kind in ANIMATED_KINDS) {
       /* live GLSL sky: aurora / nebula animated per-frame, seamless, loopless */
-      mat = animatedSkyMaterial(def);
-      mat.opacity = fade === 0 ? 1 : 0;
-      mat.uniforms.uOpacity.value = mat.opacity;
+      const mat = animatedSkyMaterial(def);
+      mat.opacity = startOp;
+      mat.uniforms.uOpacity.value = startOp;
+      addMesh(new THREE.SphereGeometry(SKY_RADIUS, 48, 32), mat, -1000);
     } else {
-      mat = new THREE.MeshBasicMaterial({
-        map: proceduralSky(def), side: THREE.BackSide, transparent: true,
-        opacity: fade === 0 ? 1 : 0, depthWrite: false,
-      });
+      addMesh(new THREE.SphereGeometry(SKY_RADIUS, 48, 32),
+        new THREE.MeshBasicMaterial({
+          map: proceduralSky(def), side: THREE.BackSide, transparent: true, opacity: startOp, depthWrite: false,
+        }), -1000);
     }
+
     if (this.current !== def) {                     /* superseded meanwhile */
-      if (mat.map) mat.map.dispose();
-      mat.dispose();
+      for (const m of mats) { if (m.map) m.map.dispose(); m.dispose(); }
       if (video) { video.pause(); video.removeAttribute('src'); }
       return false;
     }
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(SKY_RADIUS, 48, 32), mat);
-    /* seam behind the avatar; per-scene yaw (degrees) picks the pretty side */
-    mesh.rotation.y = Math.PI + (def.yaw || 0) * Math.PI / 180;
-    mesh.renderOrder = -1000;
-    this.avatar.scene.add(mesh);
+    /* seam/segment behind the avatar; per-scene yaw (degrees) picks the pretty side */
+    group.rotation.y = Math.PI + (def.yaw || 0) * Math.PI / 180;
+    this.avatar.scene.add(group);
 
     if (this.active) {
       if (this.active.video) this.active.video.muted = true;   /* old ambience out */
       this.dying.push(this.active);
     }
-    this.active = { mesh, mat, video };
+    this.active = { group, mats, video };
     if (video && this.soundOn) { video.muted = false; video.volume = 0; }
 
     if (def.lighting) {
@@ -322,9 +345,10 @@ export class SceneManager {
   /* called every frame from the main loop */
   update(dt) {
     if (this.active) {
-      if (this.active.mat.opacity < 1)
-        this.active.mat.opacity = Math.min(1, this.active.mat.opacity + dt * FADE_SPEED);
-      this._syncShader(this.active.mat, dt);
+      for (const m of this.active.mats) {
+        if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + dt * FADE_SPEED);
+        this._syncShader(m, dt);
+      }
       /* ambience volume: fade in, duck under her voice */
       const v = this.active.video;
       if (v && this.soundOn && !v.muted) {
@@ -334,13 +358,16 @@ export class SceneManager {
     }
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const d = this.dying[i];
-      d.mat.opacity -= dt * FADE_SPEED;
-      this._syncShader(d.mat, dt);
-      if (d.mat.opacity <= 0) {
-        this.avatar.scene.remove(d.mesh);
-        d.mesh.geometry.dispose();
-        if (d.mat.map) d.mat.map.dispose();
-        d.mat.dispose();
+      let gone = true;
+      for (const m of d.mats) {
+        m.opacity -= dt * FADE_SPEED;
+        this._syncShader(m, dt);
+        if (m.opacity > 0) gone = false;
+      }
+      if (gone) {
+        this.avatar.scene.remove(d.group);
+        d.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+        for (const m of d.mats) { if (m.map) m.map.dispose(); m.dispose(); }
         if (d.video) { d.video.pause(); d.video.removeAttribute('src'); d.video.load(); }
         this.dying.splice(i, 1);
       }

@@ -36,9 +36,9 @@ const VIS_EXPR = ['aa', 'ih', 'ou', 'ee', 'oh'];
      fierce   = hard brow, locked gaze, squared posture                     */
 export const AFFECTS = {
   neutral: { expr: {},                                          lid: 0,   tiltZ: 0,    lean: 0,    gazeY: 0,    sacc: 1 },
-  teasing: { expr: { happy: .38, relaxed: .28, angry: .12 },    lid: .3,  tiltZ: .09,  lean: 0,    gazeY: -.04, sacc: 1 },
-  focused: { expr: { angry: .1, relaxed: .12 },                 lid: .06, tiltZ: 0,    lean: .05,  gazeY: 0,    sacc: .45 },
-  devoted: { expr: { relaxed: .45, happy: .22, blush: .55 },    lid: .3,  tiltZ: .05,  lean: .02,  gazeY: -.05, sacc: .7 },
+  teasing: { expr: { happy: .38, relaxed: .28, angry: .12 },    lid: .2,  tiltZ: .09,  lean: 0,    gazeY: -.04, sacc: 1 },
+  focused: { expr: { angry: .1, relaxed: .12 },                 lid: .05, tiltZ: 0,    lean: .05,  gazeY: 0,    sacc: .45 },
+  devoted: { expr: { relaxed: .45, happy: .22, blush: .55 },    lid: .2,  tiltZ: .05,  lean: .02,  gazeY: -.05, sacc: .7 },
   fierce:  { expr: { angry: .35, surprised: .08 },              lid: .1,  tiltZ: -.05, lean: .04,  gazeY: 0,    sacc: .5 },
 };
 
@@ -339,7 +339,8 @@ export class Avatar {
       if (this.blinkT > .16 + Math.abs(this.blinkAsym)) { this.blinkT = -1; this.blink = 0; blinkL = blinkR = 0; }
     }
     if (this.winkT > 0) this.winkT -= dt;
-    this.lid = lerp(this.lid, Math.min(1, blend.lid + AD.lid * aw), 1 - Math.exp(-dt * 6));
+    /* sustained droop is capped: bedroom eyes yes, asleep no */
+    this.lid = lerp(this.lid, Math.min(.26, blend.lid + AD.lid * aw), 1 - Math.exp(-dt * 6));
 
     /* saccadic gaze: instant micro-jumps, fixation jitter between them.
        a focused/fierce stance damps the wander: the gaze locks on */
@@ -363,9 +364,9 @@ export class Avatar {
       this.gazeCur.x = blend.gaze.x + this.sacc.tx;
       this.gazeCur.y = blend.gaze.y + AD.gazeY * aw + this.sacc.ty;
     }
-    /* micro-drift during fixation */
-    this.gazeCur.x += (Math.random() - .5) * .0035;
-    this.gazeCur.y += (Math.random() - .5) * .0025;
+    /* micro-drift during fixation (eyes only; kept tiny so nothing shivers) */
+    this.gazeCur.x += (Math.random() - .5) * .0015;
+    this.gazeCur.y += (Math.random() - .5) * .001;
     this.lookAtTarget.position.set(this.gazeCur.x * .6, this.gazeCur.y * .4, 0);
 
     this.wordBob *= Math.exp(-dt * 7);
@@ -416,13 +417,17 @@ export class Avatar {
         if (B.rArm) B.rArm.rotation.set(F * .03 * osc(ts, .29, .43, 5), 0, this.armBase.r + this.dropSign.r * (-.05 + .025 * osc(ts, .41, .59, 4)));
       }
 
-      /* additive accents on top of whatever the body layer did */
+      /* additive accents on top of whatever the body layer did.
+         word-bob is a whisper, not a twitch: with word-exact timestamps and
+         long replies it fires constantly, and the talk clips already move
+         the head — keep it barely perceptible */
+      const bobAmp = this.mocapActive ? .012 : .02;
       if (B.head) {
-        B.head.rotation.x += F * .05 * this.wordBob;
+        B.head.rotation.x += F * bobAmp * this.wordBob;
         B.head.rotation.z += F * .02 * Math.sin(ts * .4);
         if (M.nodT > 0) B.head.rotation.x += F * .06 * Math.sin(M.nodT * 12) * Math.min(1, M.nodT * 4);
       }
-      if (B.neck) B.neck.rotation.x += F * .02 * this.wordBob;
+      if (B.neck) B.neck.rotation.x += F * .006 * this.wordBob;
       if (B.chest) {
         B.chest.rotation.x += F * .02 * M.breathBoost * Math.sin(ts * 3.1);
         if (M.shoulderT > 0) B.chest.rotation.z += F * .015 * Math.sin(Math.PI * Math.min(1, M.shoulderT / 1.4));
