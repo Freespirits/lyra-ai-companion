@@ -157,8 +157,8 @@ export class PostFX {
     this.composer = null;
     this.passes = {};
     this._frame = 0;
-    this._size = { w: 1, h: 1, pr: 1 };
-    this._fpsAvg = 60; this._fpsT = 0;
+    this._size = { w: 0, h: 0, pr: 0 };      /* 0 = not sized yet -> direct render */
+    this._fpsAvg = 60; this._fpsT = 0; this._age = 0;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     this._build();
@@ -232,6 +232,8 @@ export class PostFX {
   }
 
   setSize(w, h, pr) {
+    if (!(w > 1 && h > 1)) return;                                   /* ignore degenerate early layout */
+    if (this._size.w === w && this._size.h === h && this._size.pr === pr) return;  /* no-op: don't thrash targets */
     this._size = { w, h, pr };
     if (!this.composer) return;
     const cfg = CFG[this.tier];
@@ -252,7 +254,10 @@ export class PostFX {
 
   /* adaptive: sustained low fps steps the tier down once (never past a human pick) */
   sampleFps(dt) {
-    if (this.userPinned || this.tier === 'off' || this.tier === 'low') return;
+    this._age += dt;
+    /* warm-up grace: load hitches (VRM, scene texture, PMREM) must not trip a
+       downgrade + composer rebuild in the first seconds (the startup flicker) */
+    if (this.userPinned || this.tier === 'off' || this.tier === 'low' || this._age < 5) return;
     const fps = dt > 0 ? 1 / dt : 60;
     this._fpsAvg += (fps - this._fpsAvg) * 0.05;
     this._fpsT += dt;
@@ -268,7 +273,8 @@ export class PostFX {
   render(dt) {
     this._frame = (this._frame + 1) % 4096;
     if (this.passes.grade) this.passes.grade.uniforms.frame.value = this._frame;
-    if (this.composer) this.composer.render(dt);
+    /* until a real size lands, render straight (clean) instead of a 1x1 composer */
+    if (this.composer && this._size.w > 1) this.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
   }
 }
