@@ -669,7 +669,9 @@ app.post('/api/greet', async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
   const send = o => { try { res.write(JSON.stringify(o) + '\n'); } catch (e) {} };
   const ac = new AbortController();
-  req.on('close', () => ac.abort());
+  let finished = false;                       /* abort only on a real premature disconnect,
+     not when the request body is merely fully read (Node fires req 'close' then) */
+  res.on('close', () => { if (!finished) ac.abort(); });
   try {
     const text = String(archetype.greeting || '').replace(/\{userName\}/g, userName || 'you');
     const p = parseSegment(text);
@@ -688,6 +690,7 @@ app.post('/api/greet', async (req, res) => {
   } catch (e) {
     send({ type: 'error', message: e.message, turnId: 0 });
   } finally {
+    finished = true;
     res.end();
   }
 });
