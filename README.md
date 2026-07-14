@@ -1,3 +1,5 @@
+![Lyra](docs/media/banner.webp)
+
 # Lyra — the AI companion you call, not type at
 
 Press call. She picks up: an emotional voice that laughs and whispers, a 3D
