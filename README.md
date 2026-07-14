@@ -140,6 +140,9 @@ connects to the Gateway as an operator over its local WebSocket, streams your
 agent's replies into her voice and body, and sends your speech back — **zero
 model config**, because the brain, memory, and tools stay inside your OpenClaw.
 Set `OPENCLAW_TOKEN` (from `~/.openclaw/openclaw.json` → `gateway.auth.token`).
+Teach your agent to *perform* (gestures, expressions, scenes) with the companion
+skill on ClawHub: `openclaw skills install @Freespirits/clawlyra`
+([clawhub.ai/Freespirits/clawlyra](https://clawhub.ai/Freespirits/clawlyra), source in `skills/clawlyra/`).
 
 **Content guard** (`LYRA_GUARD`, on by default): every reply is vetted — warmth
 and flirtation are allowed, explicit and harmful content is blocked, and she

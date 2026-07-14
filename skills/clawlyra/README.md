@@ -1,5 +1,7 @@
 # clawlyra — give your OpenClaw agent a face and a voice
 
+**On ClawHub:** https://clawhub.ai/Freespirits/clawlyra — `openclaw skills install @Freespirits/clawlyra`
+
 This is an [OpenClaw](https://github.com/openclaw/openclaw) AgentSkill that turns
 **[Lyra](https://github.com/Freespirits/lyra-ai-companion)** — a self-hosted 3D
 avatar companion — into the talking, lip-synced, *performing* face of **your own
@@ -22,7 +24,7 @@ So this is two pieces:
 
 1. **Install the skill** into your OpenClaw:
    ```
-   openclaw skills install clawlyra
+   openclaw skills install @Freespirits/clawlyra
    ```
    (or `openclaw skills install ./skills/clawlyra --as clawlyra` from a checkout)
 
@@ -44,5 +46,7 @@ So this is two pieces:
 - **Compatibility:** the exact tag vocabulary in `SKILL.md` mirrors Lyra's
   `server/protocol.js`. If you extend Lyra's gestures/affects/scenes, update the
   skill's lists to match.
-- **License:** PolyForm Noncommercial 1.0.0 — personal use is free; commercial use
-  needs a license from the author.
+- **License:** this skill (`SKILL.md`) is **MIT-0** on ClawHub — free to use,
+  modify, and redistribute, no attribution. The **Lyra app** it drives is a
+  separate project under **PolyForm Noncommercial 1.0.0** (personal use free;
+  commercial use needs a license from the author).
