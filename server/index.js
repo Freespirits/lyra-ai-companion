@@ -429,9 +429,9 @@ async function runProvider(provider, m, ac, onDelta, system) {
 async function extractMemory(provider, msgs, reply) {
   const stamp = '[time: ' + new Date().toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false }) + ']';
   const transcript = stamp + '\n' + msgs.slice(-6).map(m =>
-    (m.role === 'user' ? 'Ori: ' : 'Lyra: ') +
+    (m.role === 'user' ? 'User: ' : 'Her: ') +
     (typeof m.content === 'string' ? m.content : '[media message]')).join('\n')
-    + '\nLyra: ' + stripAllTags(reply).slice(0, 2000);
+    + '\nHer: ' + stripAllTags(reply).slice(0, 2000);
   const ac = new AbortController();
   const kill = setTimeout(() => ac.abort(), 90000);
   let out = '';
@@ -522,6 +522,9 @@ app.post('/api/chat', async (req, res) => {
   abortTurns(turnId - 1);                 /* a newer turn overrides older work */
   const ac = register(turnId);
   const provider = (process.env.LLM_PROVIDER || 'anthropic').toLowerCase();
+  const archetypeId = String((req.body && req.body.archetype) || 'lyra');
+  const userName = String((req.body && req.body.userName) || '').slice(0, 40).trim();
+  const archetype = resolveArchetype(archetypeId);
   const ttsOn = (process.env.TTS_PROVIDER || 'edge').toLowerCase() !== 'browser';
 
   res.setHeader('Content-Type', 'application/x-ndjson');
@@ -547,7 +550,7 @@ app.post('/api/chat', async (req, res) => {
   }
 
   /* semantic recall: old memories related to right now ride into the prompt */
-  let system = buildSystem();
+  let system = buildSystem(archetypeId, userName);
   try {
     const rel = await memory.retrieve(lastUserText);
     if (rel.length) system += '\n\n' + memory.renderRelevant(rel);
@@ -572,7 +575,7 @@ app.post('/api/chat', async (req, res) => {
     ttsJobs.push(queue(async () => {
       if (ac.signal.aborted) return;
       try {
-        const a = await synthSegment(p.ttsText, ac.signal);
+        const a = await synthSegment(p.ttsText, archetype, ac.signal);
         send({ type: 'audio', i, ...(a || { audio: null }) });
       } catch (e) {
         if (!ac.signal.aborted) send({ type: 'audio', i, audio: null, error: e.message });
