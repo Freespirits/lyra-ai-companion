@@ -33,6 +33,7 @@ import { Aura } from './aura.js';
 import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES, AFFECTS, AUDIO_TAGS } from './protocol.js';
 import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
 import { buildSystemPrompt } from './system-prompt.js';
+import { streamOpenClaw } from './openclaw.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
@@ -423,6 +424,7 @@ async function runProvider(provider, m, ac, onDelta, system) {
   if (provider === 'claude-code') return streamClaudeCode(m, ac, onDelta, system);
   if (provider === 'codex') return streamCodex(m, ac, onDelta, system);
   if (provider === 'gemini-cli') return streamGeminiCli(m, ac, onDelta, system);
+  if (provider === 'openclaw') return streamOpenClaw(m, ac, onDelta, {});
   return streamAnthropic(m, ac, onDelta, system);
 }
 
