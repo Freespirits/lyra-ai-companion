@@ -364,11 +364,12 @@ function marksFromAlignment(alignment) {
   return marks;
 }
 
-async function synthEleven(text, signal) {
-  if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_VOICE_ID)
+async function synthEleven(text, voiceId, signal) {
+  const vid = voiceId || process.env.ELEVENLABS_VOICE_ID;
+  if (!process.env.ELEVENLABS_API_KEY || !vid)
     throw new Error('ElevenLabs key/voice missing in .env');
   const model = process.env.ELEVENLABS_MODEL || 'eleven_v3';
-  const base = 'https://api.elevenlabs.io/v1/text-to-speech/' + process.env.ELEVENLABS_VOICE_ID;
+  const base = 'https://api.elevenlabs.io/v1/text-to-speech/' + vid;
   const headers = { 'Content-Type': 'application/json', 'xi-api-key': process.env.ELEVENLABS_API_KEY };
   const body = JSON.stringify({ text, model_id: model });
 
@@ -388,10 +389,10 @@ async function synthEleven(text, signal) {
   return { format: 'mp3', audio: Buffer.from(await r.arrayBuffer()).toString('base64'), marks: [] };
 }
 
-async function synthEdge(text, signal) {
+async function synthEdge(text, edgeVoice, signal) {
   const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
   const tts = new MsEdgeTTS();
-  await tts.setMetadata(process.env.EDGE_VOICE || 'en-US-AriaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+  await tts.setMetadata(edgeVoice || process.env.EDGE_VOICE || 'en-US-AriaNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
   const result = await tts.toStream(stripAllTags(text));
   const stream = result.audioStream || result;
   signal.addEventListener('abort', () => { try { stream.destroy(new Error('interrupted')); } catch (e) {} });
@@ -405,10 +406,12 @@ async function synthEdge(text, signal) {
   return { format: 'mp3', audio: Buffer.concat(chunks).toString('base64'), marks: [] };
 }
 
-async function synthSegment(text, signal) {
-  const provider = (process.env.TTS_PROVIDER || 'edge').toLowerCase();
-  if (provider === 'elevenlabs') return synthEleven(text, signal);
-  if (provider === 'edge') return synthEdge(text, signal);
+async function synthSegment(text, archetype, signal) {
+  const engine = (process.env.TTS_PROVIDER || 'edge').toLowerCase();
+  if (engine === 'elevenlabs')
+    return synthEleven(text, pickVoice(archetype, 'elevenlabs', { elevenlabs: process.env.ELEVENLABS_VOICE_ID }), signal);
+  if (engine === 'edge')
+    return synthEdge(text, pickVoice(archetype, 'edge', { edge: process.env.EDGE_VOICE }), signal);
   return null;   /* browser: client speaks via speechSynthesis */
 }
 
@@ -623,7 +626,7 @@ app.get('/api/fillers', async (req, res) => {
         const clips = [];
         for (const t of FILLER_TEXTS) {
           try {
-            const a = await synthEleven(t, new AbortController().signal);
+            const a = await synthEleven(t, process.env.ELEVENLABS_VOICE_ID, new AbortController().signal);
             if (a) clips.push({ format: a.format, audio: a.audio });
           } catch (e) { /* skip a failed clip */ }
         }
