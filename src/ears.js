@@ -111,6 +111,8 @@ export class Ears {
         a.microExpression('relaxed', .3, 2.0);
         break;
       case 'backchannel':
+        /* occasionally a real mocap acknowledgement instead of a micro nod */
+        if (Math.random() < .3 && this.hooks.onBackchannel && this.hooks.onBackchannel()) break;
         a.microNod(.7);
         a.microExpression('relaxed', .25, .8);
         break;

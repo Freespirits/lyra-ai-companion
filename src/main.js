@@ -60,9 +60,13 @@ function idleFlavor() {
 function doGesture(g) {
   if (!g || g === 'none') return;
   if (g === 'wink') { avatar.wink(); return; }
-  const clipName = { bounce: 'bounce', wave: 'wave', nod: 'agree', shrug: 'shrug' }[g];
+  const clipName = {
+    bounce: 'bounce', wave: 'wave', nod: 'agree', shrug: 'shrug',
+    no: 'no', cocky: 'cocky', angry: 'angry', lookaway: 'lookaway',
+    sigh: 'sigh', dance: 'dance', jump: 'jump',
+  }[g];
   if (anim && clipName && anim.oneShot(clipName)) return;
-  avatar.proceduralGesture(g === 'tilt' ? 'tilt' : 'nod');
+  avatar.proceduralGesture(g === 'tilt' || g === 'no' || g === 'lookaway' ? 'tilt' : 'nod');
 }
 
 /* ---------------- captions ---------------- */
@@ -390,6 +394,7 @@ async function boot() {
         if ($('bargeChk').checked && (busy || state === S.SPEAK)) bargeIn();
       },
       onUserStopped: () => { if (call) call.noteUserStopped(); },
+      onBackchannel: () => !!(anim && state === S.LISTEN && anim.oneShot('acknowledge')),
       onError: msg => toast(msg),
     });
 

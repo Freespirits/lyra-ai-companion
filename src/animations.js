@@ -117,16 +117,24 @@ export async function loadMixamoClip(url, vrm) {
 /* Any missing file is skipped; states without clips fall back to the  */
 /* procedural idle layer in avatar.js.                                 */
 export const MANIFEST = {
-  idle:    ['idle.fbx', 'idle2.fbx', 'idle3.fbx'],
-  happy:   ['happy-idle.fbx'],
-  sad:     ['sad-idle.fbx'],
-  listen:  ['listen.fbx'],
-  think:   ['think.fbx'],
-  talk:    ['talk.fbx', 'talk2.fbx'],
-  wave:    ['wave.fbx'],
-  bounce:  ['excited.fbx'],
-  agree:   ['agree.fbx'],
-  shrug:   ['shrug.fbx'],
+  idle:        ['idle.fbx', 'idle (1).fbx', 'breathing idle.fbx', 'weight shift.fbx', 'idle2.fbx', 'idle3.fbx'],
+  happy:       ['happy idle.fbx', 'happy-idle.fbx'],
+  sad:         ['sad idle.fbx', 'sad-idle.fbx'],
+  listen:      ['standing idle.fbx', 'listen.fbx'],
+  think:       ['thinking.fbx', 'think.fbx'],
+  talk:        ['talking.fbx', 'talking (1).fbx', 'talk.fbx', 'talk2.fbx'],
+  wave:        ['wave.fbx', 'waving.fbx'],
+  bounce:      ['happy hand gesture.fbx', 'excited.fbx'],
+  agree:       ['head nod yes.fbx', 'lengthy head nod.fbx', 'hard head nod.fbx', 'agree.fbx'],
+  shrug:       ['dismissing gesture.fbx', 'shrug.fbx'],
+  no:          ['shaking head no.fbx', 'annoyed head shake.fbx'],
+  cocky:       ['being cocky.fbx'],
+  angry:       ['angry gesture.fbx'],
+  lookaway:    ['look away gesture.fbx'],
+  sigh:        ['relieved sigh.fbx'],
+  acknowledge: ['acknowledging.fbx', 'sarcastic head nod.fbx'],
+  dance:       ['hip hop dancing.fbx', 'salsa dancing.fbx', 'samba dancing.fbx'],
+  jump:        ['jump.fbx'],
 };
 
 export class AnimController {

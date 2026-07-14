@@ -7,7 +7,8 @@
    This module is pure functions/classes so it can be unit-tested with node. */
 
 export const EMOTIONS = ['neutral', 'happy', 'excited', 'flirty', 'surprised', 'sad', 'thinking'];
-export const GESTURES = ['nod', 'tilt', 'wink', 'bounce', 'wave', 'shrug'];
+export const GESTURES = ['nod', 'tilt', 'wink', 'bounce', 'wave', 'shrug',
+  'no', 'cocky', 'angry', 'lookaway', 'sigh', 'dance', 'jump'];
 /* sustained stances (dynamic affect): unlike mood bursts these persist until changed */
 export const AFFECTS = ['neutral', 'teasing', 'focused', 'devoted', 'fierce'];
 
