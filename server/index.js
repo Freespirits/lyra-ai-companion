@@ -604,7 +604,7 @@ app.post('/api/chat', async (req, res) => {
     const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');
     const boundary = guardOn ? ' Keep it SWEET and warm, never steamy: affection, gentle playful teasing, genuine care and charm — but no sexual tension, no come-ons, no innuendo, and nothing graphic or explicit. Tender and charming, not sultry or seductive. Refuse anything harmful.' : '';
     const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + boundary
-      + ' Write ONLY her spoken words — no stage directions, no parentheses, no asterisks, no narration; her body and expressions are performed for you.]';
+      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|bedroom|sunset-beach|night-city|cosmos). Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') { msgs[i] = { ...msgs[i], content: framing + '\n\n' + msgs[i].content }; break; }
     }
