@@ -31,7 +31,7 @@ import { attachStt, sttEnabled } from './stt.js';
 import { MemoryStore, EXTRACT_SYSTEM, extractPrompt, REFLECT_SYSTEM, reflectPrompt } from './memory.js';
 import { Aura } from './aura.js';
 import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES, AFFECTS, AUDIO_TAGS } from './protocol.js';
-import { resolveArchetype, pickVoice } from './archetypes.js';
+import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
 import { buildSystemPrompt } from './system-prompt.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -649,6 +649,48 @@ app.get('/api/fillers', async (req, res) => {
 /* ---------------- manifests + health ---------------- */
 app.get('/api/scenes', (req, res) => res.json({ scenes: listScenes() }));
 app.get('/api/avatars', (req, res) => res.json({ avatars: listAvatars() }));
+
+/* Public archetype list for the character picker — persona/voice/greeting
+   stay server-side; the client only needs display + defaults. */
+app.get('/api/archetypes', (req, res) => {
+  res.json({ archetypes: ARCHETYPES.map(a => ({
+    id: a.id, name: a.name, tagline: a.tagline, traits: a.traits, portrait: a.portrait, scene: a.scene,
+  })) });
+});
+
+/* Speak a character's fixed greeting through the segment/TTS pipeline, so the
+   client plays it exactly like a normal reply (no LLM call). */
+app.post('/api/greet', async (req, res) => {
+  const archetype = resolveArchetype(String((req.body && req.body.archetype) || 'lyra'));
+  const userName = String((req.body && req.body.userName) || '').slice(0, 40).trim();
+  const ttsOn = (process.env.TTS_PROVIDER || 'edge').toLowerCase() !== 'browser';
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Cache-Control', 'no-cache');
+  if (res.flushHeaders) res.flushHeaders();
+  const send = o => { try { res.write(JSON.stringify(o) + '\n'); } catch (e) {} };
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
+  try {
+    const text = String(archetype.greeting || '').replace(/\{userName\}/g, userName || 'you');
+    const p = parseSegment(text);
+    if (p.caption) {
+      send({ type: 'seg', i: 0, caption: p.caption, mood: p.mood, tts: ttsOn });
+      if (ttsOn) {
+        try {
+          const a = await synthSegment(p.ttsText, archetype, ac.signal);
+          send({ type: 'audio', i: 0, ...(a || { audio: null }) });
+        } catch (e) {
+          if (!ac.signal.aborted) send({ type: 'audio', i: 0, audio: null, error: e.message });
+        }
+      }
+    }
+    send({ type: 'done', full: text, turnId: 0 });
+  } catch (e) {
+    send({ type: 'error', message: e.message, turnId: 0 });
+  } finally {
+    res.end();
+  }
+});
 app.get('/api/animations', (req, res) => {
   try {
     res.json({ files: fs.readdirSync(path.join(ROOT, 'public', 'animations')).filter(f => /\.fbx$/i.test(f)) });
