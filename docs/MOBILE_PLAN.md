@@ -104,6 +104,8 @@ The web app's pipeline ports directly and gets *better* on mobile:
   on-device, 60fps, and far better than anything in the browser: real gaze
   following, plus expression blendshapes (ARKit gives smile/frown/jaw values
   directly — the "user is smiling" signal without any LLM call).
+- **Self-view**: mirrored camera preview (the web app's bottom-right pane,
+  tap to shrink) — on mobile make it draggable and remember its corner.
 - Privacy: frames are analyzed and discarded, nothing persists; camera use is
   a visible toggle with the OS indicator. On-device expression detection
   (ARKit/ML Kit) can replace most LLM vision calls to cut cost and latency —
@@ -129,7 +131,8 @@ Same protocol as the web app (this repo, `normalizeAttachments`):
 ├─ Brain adapters: anthropic | claude-sub | openai |   │
 │   gemini | ollama-remote | desktop-relay             │
 ├─ Voice: whisper-on-device | deepgram | os-dictation  │
-│          elevenlabs-v3 | os-tts                      │
+│          elevenlabs-v3 | os-tts | echo filter        │
+├─ Vision: ARKit/ML Kit face+expression | frame→brain  │
 └─ Storage: Keychain/Keystore (keys), SQLite (history),│
            file cache (scenes, VRMs, filler audio)     │
 ```
