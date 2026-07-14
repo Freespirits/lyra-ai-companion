@@ -1,8 +1,13 @@
-# Lyra: local LLM companion avatar
+# Lyra — the AI companion you call, not type at
 
-Full local stack for an immersive 3D companion: hands-free call mode, streaming
-brain with an inline tag protocol, ElevenLabs v3 emotional voice, 360° scenes,
-live body swapping, mocap animation, and a continuously simmering mood system.
+Press call. She picks up: an emotional voice that laughs and whispers, a 3D
+body that breathes, worlds that change around her mid-sentence, and a memory
+of you that deepens every conversation. 100% local, 100% yours.
+
+Under the hood: hands-free call mode with VAD barge-in, a streaming brain with
+an inline tag protocol, ElevenLabs v3 emotional speech, generated video scenes,
+live body swapping, mocap animation, a continuously simmering mood system, and
+typed persistent memory with reflection.
 
 ```
 Browser (Vite, three.js + three-vrm)             Node backend (Express)
