@@ -36,7 +36,8 @@ export let USER_NAME = (() => {
 
 export const getUserName = () => USER_NAME;
 
-window.lyraSetName = n => {
+export function lyraSetName(n) {
   USER_NAME = String(n || '').trim().slice(0, 40);
   localStorage.setItem('lyra-user', USER_NAME);
-};
+}
+window.lyraSetName = lyraSetName;

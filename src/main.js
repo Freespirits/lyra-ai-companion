@@ -6,7 +6,7 @@ import { SceneManager } from './scenes.js';
 import { CallLoop } from './call.js';
 import { Ears } from './ears.js';
 import { VisionSense } from './vision.js';
-import { API } from './config.js';
+import { API, getUserName, lyraSetName } from './config.js';
 
 const $ = id => document.getElementById(id);
 const logEl = $('log'), inp = $('inp'), fxEl = $('fx');
@@ -22,6 +22,8 @@ let lastProactiveAt = 0, lastSeenExpression = 'neutral';
 let player = null;                  /* SegmentPlayer for the current turn */
 const history = [];
 let avatars = [], currentAvatarUrl = null;
+let archetypes = [];
+let activeArchetype = 'lyra';
 let fillers = [], fillerTimer = 0;
 let camMode = 'full';
 let speakEndAt = 0;   /* echo gate: room reverb of her voice outlives the audio */
@@ -280,7 +282,6 @@ function handleCtl(ev) {
     if (turn === userSceneTurn) return;   /* you picked a scene mid-reply: yours wins */
     sceneMgr.apply(ev.name).then(ok => { if (ok) markScenePicker(ev.name); });
   }
-  else if (ev.kind === 'avatar') swapAvatar(ev.name);
 }
 
 /* ---------------- orchestrator ---------------- */
@@ -327,7 +328,7 @@ async function handleUser(text, opts = {}) {
   try {
     let full = '';
     await streamChat({
-      messages: history.slice(), turnId: myTurn,
+      messages: history.slice(), turnId: myTurn, archetype: activeArchetype,
       context: vision && vision.note ? '[seen through the camera: ' + vision.note + ']' : '',
       onEvent: ev => {
         if (myTurn !== turn) return;
@@ -371,15 +372,87 @@ function markScenePicker(name) {
   document.querySelectorAll('#scenePicker button').forEach(b =>
     b.classList.toggle('cur', b.dataset.name === (sceneMgr.current && sceneMgr.current.name)));
 }
-function markAvatarPicker() {
-  document.querySelectorAll('#avatarPicker button').forEach(b => {
-    const a = avatars.find(x => x.name === b.dataset.name);
-    b.classList.toggle('cur', !!a && a.url === currentAvatarUrl);
-  });
+function buildCharPicker() {
+  const el = $('charPicker');
+  el.innerHTML = '';
+  for (const a of archetypes) {
+    const b = document.createElement('button');
+    b.dataset.name = a.id;
+    const thumb = document.createElement('span');
+    thumb.className = 'charThumb';
+    thumb.textContent = a.name.slice(0, 1);
+    if (a.portrait) {
+      const img = new Image();
+      img.onload = () => { thumb.style.backgroundImage = 'url(' + API(a.portrait) + ')'; thumb.textContent = ''; };
+      img.src = API(a.portrait);   /* missing file → onload never fires → initial stays */
+    }
+    const name = document.createElement('div'); name.className = 'cName'; name.textContent = a.name;
+    const tags = document.createElement('div'); tags.className = 'cTags';
+    tags.textContent = (a.traits || []).slice(0, 4).join(' · ');
+    const line = document.createElement('div'); line.className = 'cLine'; line.textContent = a.tagline || '';
+    b.append(thumb, name, tags, line);
+    b.addEventListener('click', () => { selectCharacter(a.id); closePickers(); });
+    el.appendChild(b);
+  }
+  const cur = archetypes.find(a => a.id === activeArchetype);
+  if (cur) setCharBtnThumb(cur);
 }
+
+function setCharBtnThumb(a) {
+  const t = $('charBtnImg');
+  if (!t) return;
+  t.textContent = a.name.slice(0, 1);
+  if (a.portrait) {
+    const img = new Image();
+    img.onload = () => { t.style.backgroundImage = 'url(' + API(a.portrait) + ')'; t.textContent = ''; };
+    img.src = API(a.portrait);
+  }
+}
+
+function markCharPicker() {
+  document.querySelectorAll('#charPicker button').forEach(b =>
+    b.classList.toggle('cur', b.dataset.name === activeArchetype));
+}
+
+async function selectCharacter(id) {
+  const a = archetypes.find(x => x.id === id);
+  if (!a || id === activeArchetype) { if (a) speakGreeting(id); return; }
+  activeArchetype = id;
+  markCharPicker();
+  setCharBtnThumb(a);
+  await swapAvatar(id);                             /* body name === archetype id */
+  if (a.scene) { userSceneTurn = turn; sceneMgr.apply(a.scene).then(ok => { if (ok) markScenePicker(a.scene); }); }
+  speakGreeting(id);
+}
+
+function speakGreeting(id) {
+  if (!avatar || busy) return;
+  const myTurn = ++turn;
+  const gp = new SegmentPlayer(avatar, {
+    onSegStart: seg => {
+      if (myTurn !== turn) return;
+      if (state !== S.SPEAK) setState(S.SPEAK);
+      noteLyraSpeech(seg.caption);
+      startCaption(seg);
+      lyraBubbleAppend(seg.caption);
+    },
+    onWord: () => captionWord(),
+    onAllDone: () => { if (myTurn !== turn) return; setState(call && call.running ? S.LISTEN : S.IDLE); captionFadeSoon(); },
+  });
+  streamChat({
+    endpoint: '/api/greet', archetype: id, messages: [], turnId: myTurn,
+    onEvent: ev => {
+      if (myTurn !== turn) return;
+      if (ev.type === 'seg') gp.addSeg(ev);
+      else if (ev.type === 'audio') gp.addAudio(ev.i, ev);
+      else if (ev.type === 'done' || ev.type === 'error') gp.finish();
+    },
+  }).catch(() => gp.finish());
+}
+
 function closePickers() {
   $('scenePicker').classList.remove('open');
-  $('avatarPicker').classList.remove('open');
+  $('charPicker').classList.remove('open');
 }
 
 async function swapAvatar(name) {
@@ -400,13 +473,17 @@ async function swapAvatar(name) {
       else anim.setBase(idleFlavor());
     }
     spawnFx('sparkle');
-    markAvatarPicker();
+    markCharPicker();
   } catch (e) { toast('Body swap failed: ' + e.message); }
 }
 
 /* ---------------- boot ---------------- */
 async function boot() {
   try {
+    if (!getUserName() && !window.Capacitor) {
+      const n = window.prompt('What should she call you?');
+      if (n && n.trim()) lyraSetName(n.trim());
+    }
     avatar = new Avatar($('cv3d'), $('stageInner'));
     avatar.viseme = () => lip.current();
     avatar.onFx = spawnFx;
@@ -482,10 +559,11 @@ async function boot() {
     });
 
     loadMsg.textContent = 'Finding her...';
-    const [avRes, scInit, hlRes] = await Promise.allSettled([
+    const [avRes, scInit, hlRes, arRes] = await Promise.allSettled([
       fetch(API('/api/avatars')).then(r => r.json()),
       sceneMgr.init(),
       fetch(API('/api/health')).then(r => r.json()),
+      fetch(API('/api/archetypes')).then(r => r.json()),
     ]);
     if (hlRes.status === 'fulfilled' && hlRes.value.stt === 'deepgram') call.engine = 'deepgram';
     if (hlRes.status !== 'fulfilled') {
@@ -494,6 +572,7 @@ async function boot() {
       setTimeout(() => { toast('Server unreachable — check drawer settings'); $('drawer').classList.add('open'); }, 1500);
     }
     avatars = avRes.status === 'fulfilled' ? (avRes.value.avatars || []) : [];
+    archetypes = arRes.status === 'fulfilled' ? (arRes.value.archetypes || []) : [];
     const first = avatars.find(a => a.name === 'lyra') || avatars[0];
     currentAvatarUrl = first ? first.url : '/models/lyra.vrm';
 
@@ -509,8 +588,8 @@ async function boot() {
 
     buildPicker($('scenePicker'), sceneMgr.scenes, sceneMgr.current && sceneMgr.current.name,
       it => { userSceneTurn = turn; sceneMgr.apply(it.name).then(() => markScenePicker(it.name)); });
-    buildPicker($('avatarPicker'), avatars, null, it => swapAvatar(it.name));
-    markAvatarPicker();
+    buildCharPicker();
+    markCharPicker();
 
     /* think-gap sounds: cached server-side, fetched lazily */
     fetch(API('/api/fillers')).then(r => r.json()).then(j => { fillers = j.clips || []; }).catch(() => {});
@@ -609,16 +688,15 @@ $('camBtn').addEventListener('click', () => {
 });
 $('sceneBtn').addEventListener('click', e => {
   e.stopPropagation();
-  $('avatarPicker').classList.remove('open');
+  $('charPicker').classList.remove('open');
   $('scenePicker').classList.toggle('open');
 });
-$('avatarBtn').addEventListener('click', e => {
-  e.stopPropagation();
+$('charBtn').addEventListener('click', () => {
   $('scenePicker').classList.remove('open');
-  $('avatarPicker').classList.toggle('open');
+  $('charPicker').classList.toggle('open');
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.picker') && !e.target.closest('#sceneBtn') && !e.target.closest('#avatarBtn')) closePickers();
+  if (!e.target.closest('.picker') && !e.target.closest('#sceneBtn') && !e.target.closest('#charBtn')) closePickers();
 });
 $('chatBtn').addEventListener('click', () => $('drawer').classList.add('open'));
 $('srvInp').value = localStorage.getItem('lyra-server') || '';
