@@ -13,7 +13,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { PostFX, initialTier, applyCelMaterials } from './render-fx.js';
 
 export const EMO = {
   neutral:   { expr: { relaxed: .15 },              lid: .05, gaze: { x: 0,  y: 0 } },
@@ -94,6 +96,15 @@ export class Avatar {
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.scene = new THREE.Scene();
+    /* soft image-based fill so forms gain gentle volume under the cel shading;
+       kept low so the toon look dominates (MToon ignores it; standard parts —
+       eyes, accessories — benefit) */
+    try {
+      const pmrem = new THREE.PMREMGenerator(r);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+      this.scene.environmentIntensity = .35;
+      pmrem.dispose();
+    } catch (e) {}
     this.camera = new THREE.PerspectiveCamera(28, 1, .05, 80);
     this.camera.position.set(0, 1.1, 2.4);
     this.scene.add(this.camera);
@@ -105,6 +116,9 @@ export class Avatar {
     const amb = new THREE.AmbientLight(0xbfb8ff, Math.PI * .22);
     this.lights = { key, rim, amb };          /* scene manager lerps these */
     this.scene.add(key, rim, amb);
+
+    /* cel-shaded HD post stack (owns tone mapping; 'off' = plain render) */
+    this.postfx = new PostFX(r, this.scene, this.camera, initialTier());
 
     /* soft contact shadow */
     const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -131,6 +145,7 @@ export class Avatar {
       const w = this.host.clientWidth || 640, h = this.host.clientHeight || 640;
       r.setSize(w, h, false);
       this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+      if (this.postfx) this.postfx.setSize(w, h, window.devicePixelRatio || 1);
     };
     size(); window.addEventListener('resize', size);
   }
@@ -170,6 +185,7 @@ export class Avatar {
     this.scene.add(vrm.scene);
     VRMUtils.rotateVRM0(vrm);
     vrm.scene.traverse(o => { o.frustumCulled = false; });
+    try { applyCelMaterials(vrm, this.renderer); } catch (e) { console.warn('[lyra] cel materials skipped:', e); }
 
     const hb = n => { try { return vrm.humanoid.getNormalizedBoneNode(n); } catch (e) { return null; } };
     this.bones = {
@@ -517,6 +533,15 @@ export class Avatar {
       this.vrm.update(dt);
     }
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    if (this.postfx) {
+      if (this.vrm) {                                  /* keep the face at DOF focus */
+        (this.bones.head || this.vrm.scene).getWorldPosition(this._tmpV);
+        this.postfx.setFocusDistance(this.camera.position.distanceTo(this._tmpV));
+      }
+      this.postfx.sampleFps(dt);
+      this.postfx.render(dt);
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }

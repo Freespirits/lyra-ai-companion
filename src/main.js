@@ -487,6 +487,12 @@ async function boot() {
     avatar = new Avatar($('cv3d'), $('stageInner'));
     avatar.viseme = () => lip.current();
     avatar.onFx = spawnFx;
+    /* visual-quality selector reflects the auto-detected tier and lets you pin one */
+    const fxSel = $('fxTier');
+    if (fxSel && avatar.postfx) {
+      fxSel.value = avatar.postfx.tier;
+      fxSel.addEventListener('change', () => avatar.postfx.setTier(fxSel.value));
+    }
     sceneMgr = new SceneManager(avatar);
     sceneMgr.onChange = () => markScenePicker();
 
