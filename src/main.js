@@ -434,7 +434,12 @@ async function boot() {
        trigger subconscious reactions; face position steers her gaze. */
     vision = new VisionSense({
       onGaze: (nx, ny) => avatar.setUserGaze(nx, ny),
-      onError: msg => { toast(msg); $('visionBtn').classList.remove('on'); },
+      onError: msg => {
+        toast(msg);
+        $('visionBtn').classList.remove('on');
+        $('selfView').classList.remove('show');
+        $('selfView').srcObject = null;
+      },
       onVision: v => {
         if (v.proximity === 'close') avatar.microLean(1.6);
         if (v.expression === 'happy' && lastSeenExpression !== 'happy') avatar.nudgeMood('happy', .35);
@@ -562,17 +567,24 @@ setInterval(() => {
 }, 1000);
 
 $('visionBtn').addEventListener('click', async () => {
+  const sv = $('selfView');
   if (vision.running) {
     vision.stop();
     $('visionBtn').classList.remove('on');
+    sv.classList.remove('show');
+    sv.srcObject = null;
     toast('She can no longer see you');
   } else {
     if (await vision.start()) {
       $('visionBtn').classList.add('on');
+      sv.srcObject = vision.stream;
+      sv.play().catch(() => {});
+      sv.classList.add('show');
       toast('She can see you now 👁');
     }
   }
 });
+$('selfView').addEventListener('click', () => $('selfView').classList.toggle('mini'));
 $('camBtn').addEventListener('click', () => {
   camMode = camMode === 'full' ? 'close' : 'full';
   avatar && avatar.frame(camMode);
