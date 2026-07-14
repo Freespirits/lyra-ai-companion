@@ -35,7 +35,7 @@ export class OpenClawClient {
     if (this.ready) return Promise.resolve();
     if (this._connectPromise) return this._connectPromise;
     this._connectPromise = new Promise((resolve, reject) => {
-      const ws = new WebSocket(this.cfg.url);
+      const ws = new WebSocket(this.cfg.url, { maxPayload: 1024 * 1024 });   /* cap frames at 1MB (default is 100MB) */
       this.ws = ws;
       this._connectId = crypto.randomUUID();
       let settled = false;
@@ -111,13 +111,17 @@ export async function streamOpenClaw(messages, ac, onDelta, opts = {}) {
   /* Stream deltas straight through — the content guard runs per-segment in the
      /api/chat emit pipeline (so each sentence is vetted as it streams, keeping
      her responsive instead of waiting for the whole reply). */
+  const MAX_REPLY = Number(process.env.OPENCLAW_MAX_REPLY) || 100000;   /* cap runaway/hostile replies */
+  const TURN_TIMEOUT_MS = Number(process.env.OPENCLAW_TURN_TIMEOUT_MS) || 120000;
   return new Promise((resolve, reject) => {
     let buf = '';
     let settled = false;
     let detach = () => {};
     let onAbort = null;
+    let timer = null;
     const finish = err => {
       if (settled) return; settled = true;
+      if (timer) clearTimeout(timer);
       detach();
       if (onAbort) ac.signal.removeEventListener('abort', onAbort);
       err ? reject(err) : resolve();
@@ -125,6 +129,8 @@ export async function streamOpenClaw(messages, ac, onDelta, opts = {}) {
     onAbort = () => { try { client.abort(); } catch (e) {} finish(new Error('interrupted')); };
     if (ac.signal.aborted) return finish(new Error('interrupted'));
     ac.signal.addEventListener('abort', onAbort, { once: true });
+    /* a gateway that drops mid-reply or never sends a terminal state must not hang the request forever */
+    timer = setTimeout(() => { try { client.abort(); } catch (e) {} finish(); }, TURN_TIMEOUT_MS);
 
     detach = client.onChat((d, f) => {
       /* ignore the user's own echoed message if it ever surfaces as a chat event */
@@ -132,7 +138,8 @@ export async function streamOpenClaw(messages, ac, onDelta, opts = {}) {
       let inc = '';
       if (d.text) inc = d.text;
       else if (d.cumulative != null && d.cumulative.startsWith(buf)) inc = d.cumulative.slice(buf.length);
-      if (inc) { buf += inc; onDelta(inc); }
+      if (inc && buf.length < MAX_REPLY) { buf += inc; onDelta(inc); }
+      if (buf.length >= MAX_REPLY) { try { client.abort(); } catch (e) {} return finish(); }   /* runaway reply: stop */
       if (d.terminal) {
         if (d.state === 'error') return finish(new Error('openclaw run error'));
         return finish();

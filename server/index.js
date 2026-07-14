@@ -569,6 +569,11 @@ app.post('/api/chat', async (req, res) => {
   const archetype = resolveArchetype(archetypeId);
   const ttsOn = (process.env.TTS_PROVIDER || 'edge').toLowerCase() !== 'browser';
   const guardOn = isGuardEnabled();
+  /* Never let an untrusted external brain author Lyra's persistent memory: the
+     OpenClaw agent owns its own memory, and a malicious one could poison ours
+     (via [remember:] or the extraction pass) with content that rides into every
+     future prompt. Memory writes are for the local, guarded providers only. */
+  const memWritable = provider !== 'openclaw';
 
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
@@ -624,7 +629,7 @@ app.post('/api/chat', async (req, res) => {
 
   const speakParsed = p => {
     for (const ev of p.events) {
-      if (ev.kind === 'remember') memory.addFacts([ev.name], 'moment');
+      if (ev.kind === 'remember' && memWritable) memory.addFacts([ev.name], 'moment');
       send({ type: 'ctl', ...ev });
     }
     if (!p.caption) return;                       /* pure-directive segment */
@@ -683,7 +688,7 @@ app.post('/api/chat', async (req, res) => {
     else {
       send({ type: 'done', full, turnId });
       /* every couple of exchanges, quietly mine the conversation for memories */
-      if (full && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full); }
+      if (full && memWritable && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full); }
     }
   } catch (e) {
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });

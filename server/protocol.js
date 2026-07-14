@@ -104,6 +104,14 @@ export class SentenceSplitter {
       this.buf = this.buf.slice(idx + 1);
       if (sent) out.push(sent);
     }
+    /* safety cap: never let unpunctuated or perpetually-bracketed text grow the
+       buffer unbounded — that would OOM and make _boundary() rescans quadratic on
+       a hostile/runaway stream. Force-flush oversized runs. */
+    while (this.buf.length > 2000) {
+      const chunk = this.buf.slice(0, 2000).trim();
+      this.buf = this.buf.slice(2000);
+      if (chunk) out.push(chunk);
+    }
     return out;
   }
   _boundary() {
