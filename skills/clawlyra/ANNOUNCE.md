@@ -38,7 +38,7 @@ self-hosted 3D avatar, using OpenClaw's own operator WebSocket:
   replies warm and in-character.
 
 **Get it:**
-1. `openclaw skill install clawlyra`
+1. `openclaw skills install clawlyra`
 2. Run Lyra with `LLM_PROVIDER=openclaw` + your gateway token
 3. Talk to your agent — and watch it come alive.
 

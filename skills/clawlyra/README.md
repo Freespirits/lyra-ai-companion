@@ -22,9 +22,9 @@ So this is two pieces:
 
 1. **Install the skill** into your OpenClaw:
    ```
-   openclaw skill install clawlyra
+   openclaw skills install clawlyra
    ```
-   (or `openclaw skill install ./skills/clawlyra --as clawlyra` from a checkout)
+   (or `openclaw skills install ./skills/clawlyra --as clawlyra` from a checkout)
 
 2. **Run Lyra** pointed at your gateway — set in Lyra's `.env`:
    ```
