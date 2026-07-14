@@ -34,7 +34,8 @@ import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES,
 import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
 import { buildSystemPrompt } from './system-prompt.js';
 import { streamOpenClaw } from './openclaw.js';
-import { isGuardEnabled, moderate, DEFLECTION, makeStageDirectionStripper } from './guard.js';
+import { isGuardEnabled, moderate, pickDeflection, makeStageDirectionStripper } from './guard.js';
+import { guardModelName, moderateWithModel } from './guard-model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
@@ -580,6 +581,8 @@ app.post('/api/chat', async (req, res) => {
   let segIdx = 0, full = '';
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
   const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
+  const modelGuardOn = provider === 'openclaw' && !!guardModelName();
+  let emitChain = Promise.resolve();             /* per-segment guard is async but must stay in order */
 
   const speakParsed = p => {
     for (const ev of p.events) {
@@ -601,17 +604,30 @@ app.post('/api/chat', async (req, res) => {
     }));
   };
 
-  const emitSegment = text => {
-    if (guardTripped) return;                     /* suppress the remainder of a blocked reply */
+  /* Guard + speak ONE segment. Runs per-sentence as the reply streams (so she
+     stays responsive), and each is vetted before it's voiced. */
+  const guardAndSpeak = async text => {
+    if (guardTripped) return;
     if (provider === 'openclaw') text = stripStage(text);   /* agent narrates in parens; don't voice it */
     const p = parseSegment(text);
-    if (guardOn && p.caption && moderate(p.caption).blocked) {
-      guardTripped = true;
-      speakParsed(parseSegment(DEFLECTION));      /* Lyra holds the line in-character */
-      return;
+    if (!p.caption) { speakParsed(p); return; }   /* pure-directive: fire ctl events, nothing to vet */
+    if (guardOn && moderate(p.caption).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
+    if (modelGuardOn) {
+      let blocked = false;
+      try {
+        const gac = new AbortController();
+        const timer = setTimeout(() => gac.abort(), 12000);
+        blocked = (await moderateWithModel(lastUserText, p.caption, { signal: gac.signal })).blocked;
+        clearTimeout(timer);
+      } catch (e) { blocked = true; }             /* fail-closed */
+      if (guardTripped) return;
+      if (blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
     }
+    if (guardTripped) return;
     speakParsed(p);
   };
+
+  const emitSegment = text => { emitChain = emitChain.then(() => guardAndSpeak(text)); };
   const onDelta = d => {
     full += d;
     for (const s of splitter.push(d)) for (const g of grouper.push(s)) emitSegment(g);
@@ -623,6 +639,7 @@ app.post('/api/chat', async (req, res) => {
     await runProvider(provider, msgs, ac, onDelta, system);
     for (const s of splitter.flush()) for (const g of grouper.push(s)) emitSegment(g);
     for (const g of grouper.flush()) emitSegment(g);
+    await emitChain;                    /* let all per-segment guard checks finish */
     await Promise.allSettled(ttsJobs);
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });
     else {

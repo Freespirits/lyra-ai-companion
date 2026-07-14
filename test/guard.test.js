@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { moderate, isGuardEnabled, DEFLECTION, stripStageDirections, makeStageDirectionStripper } from '../server/guard.js';
+import { moderate, isGuardEnabled, DEFLECTIONS, pickDeflection, stripStageDirections, makeStageDirectionStripper } from '../server/guard.js';
 
 test('stripStageDirections removes parenthetical narration and asterisk actions', () => {
   assert.equal(stripStageDirections('(a slow smile) Hello, Ori.'), 'Hello, Ori.');
@@ -51,7 +51,8 @@ test('isGuardEnabled defaults on; off only when LYRA_GUARD=off', () => {
   assert.equal(isGuardEnabled({ LYRA_GUARD: 'OFF' }), false);
 });
 
-test('the deflection is in-character and itself passes the guard', () => {
-  assert.match(DEFLECTION, /hold that line/i);
-  assert.equal(moderate(DEFLECTION).blocked, false);
+test('deflections are varied and every one passes the guard', () => {
+  assert.ok(DEFLECTIONS.length >= 3, 'multiple deflection variants');
+  for (const d of DEFLECTIONS) assert.equal(moderate(d).blocked, false, d);
+  assert.ok(DEFLECTIONS.includes(pickDeflection()));
 });

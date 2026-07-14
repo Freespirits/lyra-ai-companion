@@ -25,8 +25,18 @@ const BLOCK_PATTERNS = [
   /\b(choke you|choke me|slap you|hurt you)\b.*\b(sex|while|as i|and)\b/i,
 ];
 
-/* Lyra's in-character redirect when the line is crossed. */
-export const DEFLECTION = "[softly] Mm — I'm going to hold that line, love. Come here and talk to me instead.";
+/* Lyra's in-character redirects when the line is crossed — varied so she never
+   repeats the same canned line. All are guard-safe (they pass moderate()). */
+export const DEFLECTIONS = [
+  "[softly] Mm — let's keep it a little softer than that. Come here and talk to me.",
+  "[laughs softly] You're trouble, you know that? Let's rein it in a touch, hm?",
+  "Easy, you... how about we slow down and just be here together for a minute?",
+  "[warmly] Mm, not quite — but I love where your head's at. Tell me about your day instead?",
+  "Let's leave a little to the imagination, hm? Come closer and talk to me.",
+  "[smiles] I'd rather take my time with you. Talk to me first.",
+];
+export const DEFLECTION = DEFLECTIONS[0];   /* back-compat */
+export function pickDeflection() { return DEFLECTIONS[Math.floor(Math.random() * DEFLECTIONS.length)]; }
 
 /* Agents (esp. OpenClaw) love parenthetical/asterisk stage directions
    ("(a slow smile plays on my lips)") — but Lyra performs the body, so those

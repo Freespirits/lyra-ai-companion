@@ -12,8 +12,6 @@ import {
   isChallenge, buildConnectFrame, isHelloOk, connectError, getSessionKey, getAuthMode,
   buildSubscribeFrame, buildChatSend, buildAbort, isChatEvent, extractChatDelta,
 } from './openclaw-protocol.js';
-import { guardModelName, moderateWithModel } from './guard-model.js';
-import { DEFLECTION } from './guard.js';
 
 const CONNECT_TIMEOUT_MS = 10000;
 
@@ -110,11 +108,9 @@ export async function streamOpenClaw(messages, ac, onDelta, opts = {}) {
   const client = (opts && opts.client) || getSharedClient(typeof opts === 'object' ? opts : {});
   if (!client.ready) await client.connect();
   const text = lastUserText(messages);
-  /* When a model guard is configured we buffer the whole reply, classify it, and
-     only then speak it (or a deflection) — so nothing explicit is voiced mid-stream.
-     Without a model guard we stream live as before. */
-  const modelGuard = !!guardModelName();
-
+  /* Stream deltas straight through — the content guard runs per-segment in the
+     /api/chat emit pipeline (so each sentence is vetted as it streams, keeping
+     her responsive instead of waiting for the whole reply). */
   return new Promise((resolve, reject) => {
     let buf = '';
     let settled = false;
@@ -130,32 +126,15 @@ export async function streamOpenClaw(messages, ac, onDelta, opts = {}) {
     if (ac.signal.aborted) return finish(new Error('interrupted'));
     ac.signal.addEventListener('abort', onAbort, { once: true });
 
-    const flushGuarded = async () => {
-      let blocked = false;
-      try {
-        const gac = new AbortController();
-        const timer = setTimeout(() => gac.abort(), 20000);
-        const m = await moderateWithModel(text, buf, { signal: gac.signal });
-        clearTimeout(timer);
-        blocked = m.blocked;
-      } catch (e) {
-        blocked = true;                 /* fail-closed: never leak past a broken guard */
-      }
-      if (settled || ac.signal.aborted) return;
-      onDelta(blocked ? DEFLECTION : buf);
-      finish();
-    };
-
     detach = client.onChat((d, f) => {
       /* ignore the user's own echoed message if it ever surfaces as a chat event */
       if (f && f.payload && f.payload.message && f.payload.message.role === 'user') return;
       let inc = '';
       if (d.text) inc = d.text;
       else if (d.cumulative != null && d.cumulative.startsWith(buf)) inc = d.cumulative.slice(buf.length);
-      if (inc) { buf += inc; if (!modelGuard) onDelta(inc); }
+      if (inc) { buf += inc; onDelta(inc); }
       if (d.terminal) {
         if (d.state === 'error') return finish(new Error('openclaw run error'));
-        if (modelGuard) { flushGuarded(); return; }
         return finish();
       }
     });
