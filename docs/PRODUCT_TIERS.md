@@ -53,6 +53,12 @@ control. (Most billing complexity; best UX. Long-term target, not near-term.)
    Confirm a processor will take the app **before** investing in billing.
 4. **Intimate data = real privacy obligation.** Memory/transcripts are sensitive;
    hosting them raises GDPR/retention/security duties a local app doesn't.
+   Custody flips by tier: at **Tier 1 (local)** memory lives only on the user's
+   machine — a device compromise is the user's responsibility, same as any local
+   app, and memory is opt-out with a plain notice (see the desktop spec §5b). At
+   **Tiers 2–3 (hosted)** we hold that data, so a breach is *our* liability — the
+   "not our fault" reasoning does not carry across the line. Keep memory local by
+   default and never sync it off-device without explicit consent.
 
 ## Guardrails for Tier-1 decisions (so we don't corner ourselves)
 
