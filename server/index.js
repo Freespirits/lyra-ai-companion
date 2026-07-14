@@ -34,7 +34,7 @@ import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES,
 import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
 import { buildSystemPrompt } from './system-prompt.js';
 import { streamOpenClaw } from './openclaw.js';
-import { isGuardEnabled, moderate, DEFLECTION } from './guard.js';
+import { isGuardEnabled, moderate, DEFLECTION, makeStageDirectionStripper } from './guard.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
@@ -529,6 +529,7 @@ app.post('/api/chat', async (req, res) => {
   const userName = String((req.body && req.body.userName) || '').slice(0, 40).trim();
   const archetype = resolveArchetype(archetypeId);
   const ttsOn = (process.env.TTS_PROVIDER || 'edge').toLowerCase() !== 'browser';
+  const guardOn = isGuardEnabled();
 
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
@@ -552,6 +553,19 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
+  /* OpenClaw owns the brain, so the per-character persona never reaches it via a
+     system prompt — inject it as a roleplay framing on the turn so the five
+     characters actually differ (best-effort; competes with the agent's own config). */
+  if (provider === 'openclaw' && msgs.length) {
+    const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');
+    const boundary = guardOn ? ' Stay warm and flirtatious but never sexually explicit, and refuse anything harmful.' : '';
+    const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + boundary
+      + ' Write ONLY her spoken words — no stage directions, no parentheses, no asterisks, no narration; her body and expressions are performed for you.]';
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'user') { msgs[i] = { ...msgs[i], content: framing + '\n\n' + msgs[i].content }; break; }
+    }
+  }
+
   /* semantic recall: old memories related to right now ride into the prompt */
   let system = buildSystem(archetypeId, userName);
   try {
@@ -564,8 +578,8 @@ app.post('/api/chat', async (req, res) => {
   const queue = makeQueue(2);
   const ttsJobs = [];
   let segIdx = 0, full = '';
-  const guardOn = isGuardEnabled();
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
+  const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
 
   const speakParsed = p => {
     for (const ev of p.events) {
@@ -589,6 +603,7 @@ app.post('/api/chat', async (req, res) => {
 
   const emitSegment = text => {
     if (guardTripped) return;                     /* suppress the remainder of a blocked reply */
+    if (provider === 'openclaw') text = stripStage(text);   /* agent narrates in parens; don't voice it */
     const p = parseSegment(text);
     if (guardOn && p.caption && moderate(p.caption).blocked) {
       guardTripped = true;

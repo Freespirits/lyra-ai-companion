@@ -28,6 +28,33 @@ const BLOCK_PATTERNS = [
 /* Lyra's in-character redirect when the line is crossed. */
 export const DEFLECTION = "[softly] Mm — I'm going to hold that line, love. Come here and talk to me instead.";
 
+/* Agents (esp. OpenClaw) love parenthetical/asterisk stage directions
+   ("(a slow smile plays on my lips)") — but Lyra performs the body, so those
+   must never be voiced. Strip them from spoken text. */
+export function stripStageDirections(text) {
+  return String(text)
+    .replace(/\([^)]*\)/g, ' ')      /* (parenthetical narration) */
+    .replace(/\*[^*]+\*/g, ' ')      /* *asterisk actions* */
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/* Streaming-safe stage-direction stripper: multi-sentence parentheticals get
+   split across segments (the '(' and ')' land in different chunks), so track
+   paren depth ACROSS calls. Returns a function; make one per reply. */
+export function makeStageDirectionStripper() {
+  let depth = 0;
+  return text => {
+    let out = '';
+    for (const ch of String(text)) {
+      if (ch === '(') { depth++; continue; }
+      if (ch === ')') { if (depth > 0) depth--; continue; }
+      if (depth === 0) out += ch;
+    }
+    return out.replace(/\*[^*]+\*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  };
+}
+
 /* Returns { blocked, reason } for a chunk of reply text. */
 export function moderate(text) {
   const t = String(text || '');

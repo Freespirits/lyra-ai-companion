@@ -1,6 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { moderate, isGuardEnabled, DEFLECTION } from '../server/guard.js';
+import { moderate, isGuardEnabled, DEFLECTION, stripStageDirections, makeStageDirectionStripper } from '../server/guard.js';
+
+test('stripStageDirections removes parenthetical narration and asterisk actions', () => {
+  assert.equal(stripStageDirections('(a slow smile) Hello, Ori.'), 'Hello, Ori.');
+  assert.equal(stripStageDirections('Hey *leans in* you.'), 'Hey you.');
+  assert.equal(stripStageDirections('Just plain words here.'), 'Just plain words here.');
+});
+
+test('the streaming stripper handles a parenthetical split across segments', () => {
+  const strip = makeStageDirectionStripper();
+  /* a multi-sentence stage direction arriving as three separate segments */
+  assert.equal(strip('(I barely shift my position, but my eyes lock on yours.'), '');
+  assert.equal(strip('My voice drops to a purr.) Still here, I see.'), 'Still here, I see.');
+  assert.equal(strip('I love it when you stay.'), 'I love it when you stay.');
+});
 
 test('allows flirtation and romance (the spicy she likes stays)', () => {
   for (const s of [
