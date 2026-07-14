@@ -1,0 +1,12 @@
+[
+  { "name": "rain",           "label": "Rainy Window",   "lighting": { "key": ["#9fb4ff", 0.30], "rim": ["#ff6b9d", 0.12], "amb": ["#8b95c9", 0.20] } },
+  { "name": "fireplace",      "label": "Fireplace",      "lighting": { "key": ["#ffb36b", 0.40], "rim": ["#ff8a3d", 0.20], "amb": ["#c98a5a", 0.22] } },
+  { "name": "sakura",         "label": "Sakura Dusk",    "lighting": { "key": ["#ffd4e5", 0.38], "rim": ["#ff9dc0", 0.16], "amb": ["#c9a8d8", 0.22] } },
+  { "name": "spaceship",      "label": "Starship Deck",  "lighting": { "key": ["#cfe8ff", 0.32], "rim": ["#7de3d8", 0.20], "amb": ["#8fa3d8", 0.20] } },
+  { "name": "gothic-library", "label": "Gothic Library", "lighting": { "key": ["#ffc98a", 0.34], "rim": ["#a78bfa", 0.14], "amb": ["#b09a7a", 0.20] } },
+  { "name": "neon-field",     "label": "Neon Field",     "lighting": { "key": ["#b4f0ff", 0.36], "rim": ["#ff5ec8", 0.22], "amb": ["#7ec8d8", 0.20] } },
+  { "name": "storm-beach",    "label": "Storm Beach",    "lighting": { "key": ["#c9d8ff", 0.34], "rim": ["#8fb4ff", 0.20], "amb": ["#7a8bb0", 0.18] } },
+  { "name": "snowfall",       "label": "Snowfall",       "lighting": { "key": ["#dce8ff", 0.38], "rim": ["#ffd9b0", 0.14], "amb": ["#a8b8d8", 0.24] } },
+  { "name": "deep-sea",       "label": "Deep Sea",       "lighting": { "key": ["#9fd8e8", 0.30], "rim": ["#c17bff", 0.18], "amb": ["#6a9ab0", 0.20] } },
+  { "name": "shrine",         "label": "Night Shrine",   "lighting": { "key": ["#ffb88a", 0.36], "rim": ["#ff6b6b", 0.16], "amb": ["#b0917a", 0.22] } }
+]

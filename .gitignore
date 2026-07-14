@@ -1,0 +1,15 @@
+node_modules
+dist
+
+# secrets — never commit
+.env
+
+# her private memory + cached synthesized audio
+server/.data/
+server/.cache/
+
+# licensed assets fetched locally (see scripts/fetch-assets.mjs + README):
+# VRoid/Mixamo terms don't allow public redistribution of the raw files
+public/models/*.vrm
+public/animations/*.fbx
+vite.config.js.timestamp-*

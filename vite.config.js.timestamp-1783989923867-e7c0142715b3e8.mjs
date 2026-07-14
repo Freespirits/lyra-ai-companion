@@ -1,0 +1,15 @@
+// vite.config.js
+import { defineConfig } from "file:///E:/Lyra%20Sandbox/Lyra%20Avatar%202/node_modules/vite/dist/node/index.js";
+var vite_config_default = defineConfig({
+  server: {
+    proxy: {
+      "/api": "http://localhost:8787",
+      "/ears": { target: "ws://localhost:8787", ws: true }
+    }
+  },
+  build: { chunkSizeWarningLimit: 3e3 }
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcuanMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCJFOlxcXFxMeXJhIFNhbmRib3hcXFxcTHlyYSBBdmF0YXIgMlwiO2NvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9maWxlbmFtZSA9IFwiRTpcXFxcTHlyYSBTYW5kYm94XFxcXEx5cmEgQXZhdGFyIDJcXFxcdml0ZS5jb25maWcuanNcIjtjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfaW1wb3J0X21ldGFfdXJsID0gXCJmaWxlOi8vL0U6L0x5cmElMjBTYW5kYm94L0x5cmElMjBBdmF0YXIlMjAyL3ZpdGUuY29uZmlnLmpzXCI7aW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAndml0ZSc7XG5leHBvcnQgZGVmYXVsdCBkZWZpbmVDb25maWcoe1xuICBzZXJ2ZXI6IHtcbiAgICBwcm94eToge1xuICAgICAgJy9hcGknOiAnaHR0cDovL2xvY2FsaG9zdDo4Nzg3JyxcbiAgICAgICcvZWFycyc6IHsgdGFyZ2V0OiAnd3M6Ly9sb2NhbGhvc3Q6ODc4NycsIHdzOiB0cnVlIH0sXG4gICAgfSxcbiAgfSxcbiAgYnVpbGQ6IHsgY2h1bmtTaXplV2FybmluZ0xpbWl0OiAzMDAwIH0sXG59KTtcbiJdLAogICJtYXBwaW5ncyI6ICI7QUFBcVIsU0FBUyxvQkFBb0I7QUFDbFQsSUFBTyxzQkFBUSxhQUFhO0FBQUEsRUFDMUIsUUFBUTtBQUFBLElBQ04sT0FBTztBQUFBLE1BQ0wsUUFBUTtBQUFBLE1BQ1IsU0FBUyxFQUFFLFFBQVEsdUJBQXVCLElBQUksS0FBSztBQUFBLElBQ3JEO0FBQUEsRUFDRjtBQUFBLEVBQ0EsT0FBTyxFQUFFLHVCQUF1QixJQUFLO0FBQ3ZDLENBQUM7IiwKICAibmFtZXMiOiBbXQp9Cg==
