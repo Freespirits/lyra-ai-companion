@@ -22,3 +22,21 @@ window.lyraSetServer = u => {
   localStorage.setItem('lyra-server', String(u).trim().replace(/\/+$/, ''));
   location.reload();
 };
+
+/* The user's name, asked once and woven into every character's voice.
+   Kept beside the server address; changeable from the console or settings. */
+export let USER_NAME = (() => {
+  let n = localStorage.getItem('lyra-user') || '';
+  if (!n && window.Capacitor) {
+    n = (window.prompt('What should she call you?') || '').trim();
+    if (n) localStorage.setItem('lyra-user', n.slice(0, 40));
+  }
+  return n.slice(0, 40);
+})();
+
+export const getUserName = () => USER_NAME;
+
+window.lyraSetName = n => {
+  USER_NAME = String(n || '').trim().slice(0, 40);
+  localStorage.setItem('lyra-user', USER_NAME);
+};
