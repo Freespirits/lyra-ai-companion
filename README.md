@@ -61,9 +61,9 @@ The LLM streams plain prose with inline bracket tags — no JSON:
 - **Audio tags** `[laughs] [whispers] [sighs] [excited] [curious] ...` stay in
   the TTS text (eleven_v3 performs them as vocal emotion) and nudge the avatar's
   mood vector at the same time. One tag drives voice and face together.
-- **Directive tags** `[scene:cosmos] [avatar:kira] [gesture:wave]` are stripped
-  before TTS and executed instantly — she can change the scene or her body
-  mid-sentence.
+- **Directive tags** `[affect:devoted] [scene:cosmos] [gesture:wave] [remember:…]`
+  are stripped before TTS and executed instantly — she sets her sustained stance,
+  changes the scene, fires body language, or saves a long-term memory mid-sentence.
 
 The server splits the stream into sentences, synthesizes each segment
 concurrently (order-preserving), and streams NDJSON events; she starts speaking
@@ -101,11 +101,15 @@ optional lighting overrides in `public/scenes/scenes.json`:
 Scene switches crossfade and lerp the lighting, safe mid-speech. Both you (the
 picker in the call bar) and Lyra (`[scene:name]`) control them.
 
-## Avatars (bodies)
+## Characters
 
-Every `.vrm` in `public/models/` is auto-discovered and becomes a body Lyra can
-wear — same voice, same conversation. Swap from the picker or let her do it
-with `[avatar:name]`. Build characters in VRoid Studio (free) and export VRM.
+The five bodies are five distinct **characters** — each a different companion
+with her own personality, voice, and default scene (warm, playful, thoughtful,
+elegant, spirited). Pick one from the character button; her body, voice, scene,
+and persona all switch together, and she greets you in character. On the OpenClaw
+path (where your agent owns the brain), each character's persona is injected per
+turn so they stay distinct. Every `.vrm` in `public/models/` is auto-discovered —
+build your own in VRoid Studio (free) and export VRM.
 
 ## Mocap clips
 
@@ -126,9 +130,22 @@ Missing files are skipped; without any clips a procedural idle takes over.
 ## Providers (.env)
 
 **LLM** (`LLM_PROVIDER`): `ollama` (local; `OLLAMA_MODEL`), `anthropic`
-(`ANTHROPIC_API_KEY`), or the **subscription CLIs — no API key**:
-`claude-code` (spawns `claude -p`, your Claude subscription), `codex`
-(ChatGPT subscription), `gemini-cli` (Google account). All stream.
+(`ANTHROPIC_API_KEY`), the **subscription CLIs — no API key**: `claude-code`
+(spawns `claude -p`, your Claude subscription), `codex` (ChatGPT subscription),
+`gemini-cli` (Google account), or **`openclaw`** (see below). All stream.
+
+**OpenClaw bridge** (`LLM_PROVIDER=openclaw`): make Lyra the talking, lip-synced
+face of your own [OpenClaw](https://github.com/openclaw/openclaw) agent. She
+connects to the Gateway as an operator over its local WebSocket, streams your
+agent's replies into her voice and body, and sends your speech back — **zero
+model config**, because the brain, memory, and tools stay inside your OpenClaw.
+Set `OPENCLAW_TOKEN` (from `~/.openclaw/openclaw.json` → `gateway.auth.token`).
+
+**Content guard** (`LYRA_GUARD`, on by default): every reply is vetted — warmth
+and flirtation are allowed, explicit and harmful content is blocked, and she
+redirects in character. Best paired with a local classifier that *understands*
+content instead of matching keywords: `ollama pull llama-guard3:1b` and set
+`GUARD_MODEL=llama-guard3:1b`. `LYRA_GUARD=off` disables it for private use.
 
 **STT**: set `DEEPGRAM_API_KEY` for Deepgram nova live streaming (server-side
 relay on `/stt`, best accuracy + endpointing); without it, the free Web Speech
