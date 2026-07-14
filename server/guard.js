@@ -65,9 +65,12 @@ export function makeStageDirectionStripper() {
   };
 }
 
-/* Returns { blocked, reason } for a chunk of reply text. */
+/* Returns { blocked, reason } for a chunk of reply text. Normalizes unicode and
+   strips zero-width characters first so fullwidth/decomposed/zero-width tricks
+   (e.g. "f​uck") can't slip the keyword layer. (The model guard is the real
+   boundary; this is the fast first pass.) */
 export function moderate(text) {
-  const t = String(text || '');
+  const t = String(text || '').normalize('NFKD').replace(/[​-‍⁠﻿]/g, '');
   for (const re of BLOCK_PATTERNS) {
     if (re.test(t)) return { blocked: true, reason: 'explicit-or-aggressive' };
   }

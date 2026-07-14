@@ -9,8 +9,8 @@ export function sttEnabled() {
   return !!process.env.DEEPGRAM_API_KEY;
 }
 
-export function attachStt(server) {
-  const wss = new WebSocketServer({ server, path: '/stt' });
+export function attachStt(server, verifyClient) {
+  const wss = new WebSocketServer({ server, path: '/stt', verifyClient });
   wss.on('connection', (client, req) => {
     const key = process.env.DEEPGRAM_API_KEY;
     if (!key) {

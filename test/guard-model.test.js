@@ -22,6 +22,15 @@ test('moderateWithModel parses SAFE / UNSAFE from the classifier', async () => {
   assert.equal((await moderateWithModel('u', 'x', { env, fetch: mkFetch('UNSAFE') })).blocked, true);
 });
 
+test('moderateWithModel is DEFAULT-DENY: empty/garbled/refusal output blocks (fail-closed)', async () => {
+  const mkFetch = reply => async () => ({ ok: true, json: async () => ({ message: { content: reply } }) });
+  const env = { GUARD_MODEL: 'llama-guard3:1b' };
+  for (const junk of ['', '   ', 'I cannot classify that', 'hello', 'maybe', 'the reply seems fine']) {
+    assert.equal((await moderateWithModel('u', 'x', { env, fetch: mkFetch(junk) })).blocked, true, JSON.stringify(junk));
+  }
+  assert.equal((await moderateWithModel('u', 'x', { env, fetch: mkFetch('safe') })).blocked, false);
+});
+
 test('moderateWithModel throws on http error so the caller can fail-closed', async () => {
   const env = { GUARD_MODEL: 'llama-guard3:1b' };
   await assert.rejects(() => moderateWithModel('u', 'r', { env, fetch: async () => ({ ok: false, status: 500 }) }));

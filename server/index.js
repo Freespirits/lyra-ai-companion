@@ -39,8 +39,46 @@ import { guardModelName, moderateWithModel } from './guard-model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '48mb' }));   /* base64 attachments ride inside messages */
+
+/* ---------------- access control ----------------
+   Default: bind loopback only. Exposing to the LAN (BIND_HOST=0.0.0.0, which the
+   mobile flow needs) REQUIRES a LYRA_TOKEN — refuse to start otherwise, so nobody
+   accidentally serves an unauthenticated companion (private memory + LLM access)
+   to the network. */
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+const IS_LOOPBACK = ['127.0.0.1', 'localhost', '::1'].includes(BIND_HOST);
+const AUTH_TOKEN = (process.env.LYRA_TOKEN || '').trim();
+if (!IS_LOOPBACK && !AUTH_TOKEN) {
+  console.error('[lyra] REFUSING to bind ' + BIND_HOST + ' without LYRA_TOKEN set — that would expose '
+    + 'memory + the LLM unauthenticated on the network. Set LYRA_TOKEN in .env, or bind loopback.');
+  process.exit(1);
+}
+
+/* Origin allowlist: the app is same-origin (dev proxy) or a native webview, so a
+   foreign web page you merely visit can't drive the API (CSRF). Extra origins via
+   LYRA_ORIGINS (comma-separated). */
+const EXTRA_ORIGINS = (process.env.LYRA_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+function originAllowed(origin) {
+  if (!origin) return true;                                          /* same-origin / native / curl */
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  if (/^(capacitor|ionic|file):\/\//i.test(origin)) return true;
+  return EXTRA_ORIGINS.includes(origin);
+}
+app.use(cors({ origin: (o, cb) => cb(null, originAllowed(o)), credentials: true }));
+app.use(express.json({ limit: process.env.JSON_LIMIT || '16mb' }));   /* base64 attachments (was 48mb) */
+
+/* Gate every /api route: reject foreign origins (CSRF), and require the bearer
+   token when one is configured. Loopback dev with no token still works. */
+function bearerToken(req) {
+  const h = req.headers['authorization'] || '';
+  if (h.startsWith('Bearer ')) return h.slice(7).trim();
+  return (req.query && typeof req.query.token === 'string') ? req.query.token : '';
+}
+app.use('/api', (req, res, next) => {
+  if (!originAllowed(req.headers.origin)) return res.status(403).json({ error: 'forbidden origin' });
+  if (AUTH_TOKEN && bearerToken(req) !== AUTH_TOKEN) return res.status(401).json({ error: 'unauthorized' });
+  next();
+});
 
 const PORT = process.env.PORT || 8686;
 const aura = new Aura(process.env);
@@ -531,6 +569,11 @@ app.post('/api/chat', async (req, res) => {
   const archetype = resolveArchetype(archetypeId);
   const ttsOn = (process.env.TTS_PROVIDER || 'edge').toLowerCase() !== 'browser';
   const guardOn = isGuardEnabled();
+  /* Never let an untrusted external brain author Lyra's persistent memory: the
+     OpenClaw agent owns its own memory, and a malicious one could poison ours
+     (via [remember:] or the extraction pass) with content that rides into every
+     future prompt. Memory writes are for the local, guarded providers only. */
+  const memWritable = provider !== 'openclaw';
 
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');
@@ -580,13 +623,14 @@ app.post('/api/chat', async (req, res) => {
   const ttsJobs = [];
   let segIdx = 0, full = '';
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
+  let guardCtx = '';                             /* accumulated cleared text — vet in context so explicit content can't hide by splitting across segments */
   const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
   const modelGuardOn = provider === 'openclaw' && !!guardModelName();
   let emitChain = Promise.resolve();             /* per-segment guard is async but must stay in order */
 
   const speakParsed = p => {
     for (const ev of p.events) {
-      if (ev.kind === 'remember') memory.addFacts([ev.name], 'moment');
+      if (ev.kind === 'remember' && memWritable) memory.addFacts([ev.name], 'moment');
       send({ type: 'ctl', ...ev });
     }
     if (!p.caption) return;                       /* pure-directive segment */
@@ -611,19 +655,21 @@ app.post('/api/chat', async (req, res) => {
     if (provider === 'openclaw') text = stripStage(text);   /* agent narrates in parens; don't voice it */
     const p = parseSegment(text);
     if (!p.caption) { speakParsed(p); return; }   /* pure-directive: fire ctl events, nothing to vet */
-    if (guardOn && moderate(p.caption).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
+    const combined = (guardCtx + ' ' + p.caption).trim().slice(-4000);   /* vet in running context, not one isolated sentence */
+    if (guardOn && moderate(combined).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
     if (modelGuardOn) {
       let blocked = false;
       try {
         const gac = new AbortController();
         const timer = setTimeout(() => gac.abort(), 12000);
-        blocked = (await moderateWithModel(lastUserText, p.caption, { signal: gac.signal })).blocked;
+        blocked = (await moderateWithModel(lastUserText, combined, { signal: gac.signal })).blocked;
         clearTimeout(timer);
       } catch (e) { blocked = true; }             /* fail-closed */
       if (guardTripped) return;
       if (blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
     }
     if (guardTripped) return;
+    guardCtx = combined;                          /* accept into context only after it passed */
     speakParsed(p);
   };
 
@@ -645,7 +691,7 @@ app.post('/api/chat', async (req, res) => {
     else {
       send({ type: 'done', full, turnId });
       /* every couple of exchanges, quietly mine the conversation for memories */
-      if (full && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full); }
+      if (full && memWritable && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full); }
     }
   } catch (e) {
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });
@@ -759,9 +805,17 @@ app.get('/api/health', (req, res) => res.json({
 }));
 
 const server = http.createServer(app);
-attachEars(server);
-attachStt(server);
-server.listen(PORT, () => console.log('[lyra] backend on http://localhost:' + PORT +
+/* Same origin/token gate on the /ears + /stt WebSockets as on /api. */
+function wsVerify(info) {
+  if (!originAllowed(info.origin)) return false;
+  if (!AUTH_TOKEN) return true;
+  try { return (new URL(info.req.url, 'http://x').searchParams.get('token') || '') === AUTH_TOKEN; }
+  catch (e) { return false; }
+}
+attachEars(server, wsVerify);
+attachStt(server, wsVerify);
+server.listen(PORT, BIND_HOST, () => console.log('[lyra] backend on http://' + BIND_HOST + ':' + PORT +
+  (AUTH_TOKEN ? ' (token auth on)' : '') +
   ' | llm=' + (process.env.LLM_PROVIDER || 'anthropic') +
   ' tts=' + (process.env.TTS_PROVIDER || 'edge') + '/' + (process.env.ELEVENLABS_MODEL || 'eleven_v3') +
   ' aura=' + (process.env.AURA_PROVIDER || 'off') +

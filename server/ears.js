@@ -134,8 +134,8 @@ class CueEngine {
   }
 }
 
-export function attachEars(server) {
-  const wss = new WebSocketServer({ server, path: '/ears' });
+export function attachEars(server, verifyClient) {
+  const wss = new WebSocketServer({ server, path: '/ears', verifyClient });
   wss.on('connection', ws => {
     const engine = new CueEngine(cue => {
       try { ws.send(JSON.stringify(cue)); } catch (e) {}
