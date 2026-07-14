@@ -1,5 +1,9 @@
 import { Avatar } from './avatar.js';
 import { AnimController } from './animations.js';
+
+/* gestures that should be HELD (looping dance / static pose) rather than
+   played once and released back to idle */
+const HELD_GESTURES = new Set(['lay', 'crouch', 'dance', 'workout']);
 import { lip, playClip } from './speech.js';
 import { streamChat, SegmentPlayer } from './stream.js';
 import { SceneManager } from './scenes.js';
@@ -94,8 +98,14 @@ function doGesture(g) {
     bounce: 'bounce', wave: 'wave', nod: 'agree', shrug: 'shrug',
     no: 'no', cocky: 'cocky', angry: 'angry', lookaway: 'lookaway',
     sigh: 'sigh', dance: 'dance', jump: 'jump',
+    lay: 'lay', crouch: 'crouch', workout: 'workout',
   }[g];
-  if (anim && clipName && anim.oneShot(clipName)) return;
+  if (anim && clipName) {
+    /* held acts loop/hold as the base until the next state change; the rest
+       play once over the base and release */
+    if (HELD_GESTURES.has(clipName)) { if (anim.setBase(clipName, .5)) return; }
+    else if (anim.oneShot(clipName)) return;
+  }
   avatar.proceduralGesture(g === 'tilt' || g === 'no' || g === 'lookaway' ? 'tilt' : 'nod');
 }
 

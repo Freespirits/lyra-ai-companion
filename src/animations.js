@@ -136,7 +136,14 @@ export const MANIFEST = {
   acknowledge: ['acknowledging.fbx', 'sarcastic head nod.fbx'],
   dance:       ['hip hop dancing.fbx', 'salsa dancing.fbx', 'samba dancing.fbx'],
   jump:        ['jump.fbx'],
+  /* sustained poses (single-frame): held as a base state, not a one-shot */
+  lay:         ['female laying pose.fbx', 'female laying pose (1).fbx'],
+  crouch:      ['female crouch pose.fbx', 'kneeling idle.fbx'],
+  workout:     ['kettlebell swing.fbx'],
 };
+
+/* poses that should be HELD (she stays down) rather than played once */
+export const POSE_STATES = new Set(['lay', 'crouch']);
 
 export class AnimController {
   constructor(vrm) {
@@ -158,20 +165,30 @@ export class AnimController {
       const r = await fetch(API('/api/animations'));
       onDisk = new Map(((await r.json()).files || []).map(f => [f.toLowerCase(), f]));
     } catch (e) { /* no backend: try the manifest names as-is */ }
+    const loaded = [], failed = [], missing = [];
     for (const [state, files] of Object.entries(MANIFEST)) {
       this.actions[state] = [];
       for (const f of files) {
         const real = onDisk ? onDisk.get(f.toLowerCase()) : f;
-        if (onDisk && !real) continue;
+        if (onDisk && !real) { missing.push(f); continue; }
         try {
           const clip = await loadMixamoClip('/animations/' + encodeURIComponent(real), this.vrm);
           const a = this.mixer.clipAction(clip);
           this.actions[state].push(a);
           this.hasMocap = true;
+          loaded.push(state + ':' + real);
           if (onProgress) onProgress(f);
-        } catch (e) { /* file absent: fine */ }
+        } catch (e) {
+          failed.push(real + ' (' + (e && e.message || e) + ')');
+        }
       }
     }
+    /* make silent failures visible: run `window.lyra` then check this in console */
+    console.info('[lyra mocap] loaded', loaded.length, 'clips across',
+      Object.keys(this.actions).filter(s => this.actions[s].length).length, 'states;',
+      failed.length, 'failed,', missing.length, 'files absent on disk');
+    if (failed.length) console.warn('[lyra mocap] FAILED to retarget:', failed);
+    this.states = () => Object.fromEntries(Object.entries(this.actions).map(([s, a]) => [s, a.length]));
     return this.hasMocap;
   }
 

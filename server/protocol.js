@@ -8,7 +8,8 @@
 
 export const EMOTIONS = ['neutral', 'happy', 'excited', 'flirty', 'surprised', 'sad', 'thinking'];
 export const GESTURES = ['nod', 'tilt', 'wink', 'bounce', 'wave', 'shrug',
-  'no', 'cocky', 'angry', 'lookaway', 'sigh', 'dance', 'jump'];
+  'no', 'cocky', 'angry', 'lookaway', 'sigh', 'dance', 'jump',
+  'lay', 'crouch', 'workout'];
 /* sustained stances (dynamic affect): unlike mood bursts these persist until changed */
 export const AFFECTS = ['neutral', 'teasing', 'focused', 'devoted', 'fierce'];
 
