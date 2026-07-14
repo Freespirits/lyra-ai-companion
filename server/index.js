@@ -34,6 +34,7 @@ import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES,
 import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
 import { buildSystemPrompt } from './system-prompt.js';
 import { streamOpenClaw } from './openclaw.js';
+import { isGuardEnabled, moderate, DEFLECTION } from './guard.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
@@ -563,14 +564,15 @@ app.post('/api/chat', async (req, res) => {
   const queue = makeQueue(2);
   const ttsJobs = [];
   let segIdx = 0, full = '';
+  const guardOn = isGuardEnabled();
+  let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
 
-  const emitSegment = text => {
-    const p = parseSegment(text);
+  const speakParsed = p => {
     for (const ev of p.events) {
       if (ev.kind === 'remember') memory.addFacts([ev.name], 'moment');
       send({ type: 'ctl', ...ev });
     }
-    if (!p.caption) return;                     /* pure-directive segment */
+    if (!p.caption) return;                       /* pure-directive segment */
     const i = segIdx++;
     send({ type: 'seg', i, caption: p.caption, mood: p.mood, tts: ttsOn });
     if (!ttsOn) return;
@@ -583,6 +585,17 @@ app.post('/api/chat', async (req, res) => {
         if (!ac.signal.aborted) send({ type: 'audio', i, audio: null, error: e.message });
       }
     }));
+  };
+
+  const emitSegment = text => {
+    if (guardTripped) return;                     /* suppress the remainder of a blocked reply */
+    const p = parseSegment(text);
+    if (guardOn && p.caption && moderate(p.caption).blocked) {
+      guardTripped = true;
+      speakParsed(parseSegment(DEFLECTION));      /* Lyra holds the line in-character */
+      return;
+    }
+    speakParsed(p);
   };
   const onDelta = d => {
     full += d;
