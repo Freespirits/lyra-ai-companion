@@ -39,8 +39,46 @@ import { guardModelName, moderateWithModel } from './guard-model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '48mb' }));   /* base64 attachments ride inside messages */
+
+/* ---------------- access control ----------------
+   Default: bind loopback only. Exposing to the LAN (BIND_HOST=0.0.0.0, which the
+   mobile flow needs) REQUIRES a LYRA_TOKEN — refuse to start otherwise, so nobody
+   accidentally serves an unauthenticated companion (private memory + LLM access)
+   to the network. */
+const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
+const IS_LOOPBACK = ['127.0.0.1', 'localhost', '::1'].includes(BIND_HOST);
+const AUTH_TOKEN = (process.env.LYRA_TOKEN || '').trim();
+if (!IS_LOOPBACK && !AUTH_TOKEN) {
+  console.error('[lyra] REFUSING to bind ' + BIND_HOST + ' without LYRA_TOKEN set — that would expose '
+    + 'memory + the LLM unauthenticated on the network. Set LYRA_TOKEN in .env, or bind loopback.');
+  process.exit(1);
+}
+
+/* Origin allowlist: the app is same-origin (dev proxy) or a native webview, so a
+   foreign web page you merely visit can't drive the API (CSRF). Extra origins via
+   LYRA_ORIGINS (comma-separated). */
+const EXTRA_ORIGINS = (process.env.LYRA_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+function originAllowed(origin) {
+  if (!origin) return true;                                          /* same-origin / native / curl */
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  if (/^(capacitor|ionic|file):\/\//i.test(origin)) return true;
+  return EXTRA_ORIGINS.includes(origin);
+}
+app.use(cors({ origin: (o, cb) => cb(null, originAllowed(o)), credentials: true }));
+app.use(express.json({ limit: process.env.JSON_LIMIT || '16mb' }));   /* base64 attachments (was 48mb) */
+
+/* Gate every /api route: reject foreign origins (CSRF), and require the bearer
+   token when one is configured. Loopback dev with no token still works. */
+function bearerToken(req) {
+  const h = req.headers['authorization'] || '';
+  if (h.startsWith('Bearer ')) return h.slice(7).trim();
+  return (req.query && typeof req.query.token === 'string') ? req.query.token : '';
+}
+app.use('/api', (req, res, next) => {
+  if (!originAllowed(req.headers.origin)) return res.status(403).json({ error: 'forbidden origin' });
+  if (AUTH_TOKEN && bearerToken(req) !== AUTH_TOKEN) return res.status(401).json({ error: 'unauthorized' });
+  next();
+});
 
 const PORT = process.env.PORT || 8686;
 const aura = new Aura(process.env);
@@ -761,7 +799,8 @@ app.get('/api/health', (req, res) => res.json({
 const server = http.createServer(app);
 attachEars(server);
 attachStt(server);
-server.listen(PORT, () => console.log('[lyra] backend on http://localhost:' + PORT +
+server.listen(PORT, BIND_HOST, () => console.log('[lyra] backend on http://' + BIND_HOST + ':' + PORT +
+  (AUTH_TOKEN ? ' (token auth on)' : '') +
   ' | llm=' + (process.env.LLM_PROVIDER || 'anthropic') +
   ' tts=' + (process.env.TTS_PROVIDER || 'edge') + '/' + (process.env.ELEVENLABS_MODEL || 'eleven_v3') +
   ' aura=' + (process.env.AURA_PROVIDER || 'off') +
