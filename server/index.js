@@ -805,8 +805,15 @@ app.get('/api/health', (req, res) => res.json({
 }));
 
 const server = http.createServer(app);
-attachEars(server);
-attachStt(server);
+/* Same origin/token gate on the /ears + /stt WebSockets as on /api. */
+function wsVerify(info) {
+  if (!originAllowed(info.origin)) return false;
+  if (!AUTH_TOKEN) return true;
+  try { return (new URL(info.req.url, 'http://x').searchParams.get('token') || '') === AUTH_TOKEN; }
+  catch (e) { return false; }
+}
+attachEars(server, wsVerify);
+attachStt(server, wsVerify);
 server.listen(PORT, BIND_HOST, () => console.log('[lyra] backend on http://' + BIND_HOST + ':' + PORT +
   (AUTH_TOKEN ? ' (token auth on)' : '') +
   ' | llm=' + (process.env.LLM_PROVIDER || 'anthropic') +
