@@ -134,8 +134,11 @@ class CueEngine {
   }
 }
 
-export function attachEars(server, verifyClient) {
-  const wss = new WebSocketServer({ server, path: '/ears', verifyClient });
+/* noServer mode: a single upgrade router in index.js dispatches by pathname.
+   (Attaching multiple {server,path} WebSocketServers to one http server makes
+   the first-registered one abort every non-matching upgrade with HTTP 400.) */
+export function attachEars(verifyClient) {
+  const wss = new WebSocketServer({ noServer: true, verifyClient });
   wss.on('connection', ws => {
     const engine = new CueEngine(cue => {
       try { ws.send(JSON.stringify(cue)); } catch (e) {}

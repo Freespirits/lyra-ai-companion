@@ -812,8 +812,19 @@ function wsVerify(info) {
   try { return (new URL(info.req.url, 'http://x').searchParams.get('token') || '') === AUTH_TOKEN; }
   catch (e) { return false; }
 }
-attachEars(server, wsVerify);
-attachStt(server, wsVerify);
+/* One upgrade router: multiple {server,path} WebSocketServers on a single http
+   server make the first-registered one abort every other path's handshake with
+   HTTP 400, so both run in noServer mode and we dispatch by pathname here. */
+const earsWss = attachEars(wsVerify);
+const sttWss = attachStt(wsVerify);
+server.on('upgrade', (req, socket, head) => {
+  let pathname;
+  try { pathname = new URL(req.url, 'http://x').pathname; }
+  catch (e) { socket.destroy(); return; }
+  const wss = pathname === '/ears' ? earsWss : pathname === '/stt' ? sttWss : null;
+  if (!wss) { socket.destroy(); return; }
+  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+});
 server.listen(PORT, BIND_HOST, () => console.log('[lyra] backend on http://' + BIND_HOST + ':' + PORT +
   (AUTH_TOKEN ? ' (token auth on)' : '') +
   ' | llm=' + (process.env.LLM_PROVIDER || 'anthropic') +

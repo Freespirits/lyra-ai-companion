@@ -5,6 +5,7 @@ export default defineConfig({
     proxy: {
       '/api': API,
       '/ears': { target: API.replace('http', 'ws'), ws: true },
+      '/stt': { target: API.replace('http', 'ws'), ws: true },
     },
   },
   build: { chunkSizeWarningLimit: 3000 },

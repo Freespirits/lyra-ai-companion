@@ -9,8 +9,10 @@ export function sttEnabled() {
   return !!process.env.DEEPGRAM_API_KEY;
 }
 
-export function attachStt(server, verifyClient) {
-  const wss = new WebSocketServer({ server, path: '/stt', verifyClient });
+/* noServer mode: routed by pathname from the single upgrade handler in index.js.
+   See attachEars — two {server,path} WSS on one server 400 each other's paths. */
+export function attachStt(verifyClient) {
+  const wss = new WebSocketServer({ noServer: true, verifyClient });
   wss.on('connection', (client, req) => {
     const key = process.env.DEEPGRAM_API_KEY;
     if (!key) {
