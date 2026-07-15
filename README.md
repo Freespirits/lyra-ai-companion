@@ -157,13 +157,14 @@ Teach your agent to *perform* (gestures, expressions, scenes) with the companion
 skill on ClawHub: `openclaw skills install @Freespirits/clawlyra`
 ([clawhub.ai/Freespirits/clawlyra](https://clawhub.ai/Freespirits/clawlyra), source in `skills/clawlyra/`).
 
-**Content guard** (`LYRA_GUARD`, on by default): every reply is vetted — warm,
-friendly, playful talk is allowed, while romantic, flirtatious, sexual, and
-harmful content is blocked, and she redirects in character. Best paired with a
-local classifier that *understands* content instead of matching keywords:
-`ollama pull llama-guard3:1b` and set `GUARD_MODEL=llama-guard3:1b`. Note that the
-characters' no-romance boundary is baked into their personas and always on — it is
-not controlled by this toggle; `LYRA_GUARD=off` only disables the moderation pass.
+**Content guard** (`LYRA_GUARD`, **off by default — opt-in**): the characters'
+no-romance boundary is baked into their personas and is **always on**, so it holds
+with this guard off — enabling the guard only *adds* a moderation pass. Set
+`LYRA_GUARD=on` for a fast keyword filter that blocks explicit sexual, aggressive,
+and harmful replies and redirects in character. For an optional stronger layer that
+*understands* content instead of matching keywords, also set `GUARD_MODEL` to a Llama
+Guard model — but the small `llama-guard3:1b` tends to over-flag warm, platonic talk,
+so prefer `llama-guard3:8b`. Empty `GUARD_MODEL` = keyword-only.
 
 **STT**: set `DEEPGRAM_API_KEY` for Deepgram nova live streaming (server-side
 relay on `/stt`, best accuracy + endpointing); without it, the free Web Speech
