@@ -341,6 +341,11 @@ async function streamOllama(msgs, ac, onDelta, system) {
     body: JSON.stringify({
       model: process.env.OLLAMA_MODEL || 'llama3.1',
       stream: true,
+      /* Without num_ctx ollama defaults to a tiny window (2-4k) and silently
+         truncates from the TOP when it overflows — the system prompt goes
+         first, so after a few generous replies she loses her persona, her
+         boundary, and the thread, mid-conversation. */
+      options: { num_ctx: Number(process.env.OLLAMA_NUM_CTX) || 16384 },
       messages: [{ role: 'system', content: system || buildSystem() }, ...msgs],
     }),
   });
@@ -592,8 +597,11 @@ app.post('/api/chat', async (req, res) => {
   /* Never let an untrusted external brain author Lyra's persistent memory: the
      OpenClaw agent owns its own memory, and a malicious one could poison ours
      (via [remember:] or the extraction pass) with content that rides into every
-     future prompt. Memory writes are for the local, guarded providers only. */
-  const memWritable = provider !== 'openclaw';
+     future prompt. Memory writes are for the local, guarded providers only.
+     LYRA_MEMORY=off freezes ALL writes — recall still works, nothing new is
+     kept. Meant for testing sessions that should leave no trace. */
+  const memWritable = provider !== 'openclaw'
+    && (process.env.LYRA_MEMORY || 'on').toLowerCase() !== 'off';
 
   res.setHeader('Content-Type', 'application/x-ndjson');
   res.setHeader('Cache-Control', 'no-cache');

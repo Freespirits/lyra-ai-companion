@@ -333,7 +333,12 @@ async function handleUser(text, opts = {}) {
   try {
     let full = '';
     await streamChat({
-      messages: history.slice(), turnId: myTurn, archetype: activeArchetype,
+      /* Last ~15 exchanges only. Unbounded history eventually overflows any
+         model's window and the oldest content — the system prompt included on
+         some providers — gets silently dropped, which reads as her losing the
+         thread mid-conversation. Long-term continuity is the memory system's
+         job, not the transcript's. */
+      messages: history.slice(-30), turnId: myTurn, archetype: activeArchetype,
       context: vision && vision.note ? '[seen through the camera: ' + vision.note + ']' : '',
       onEvent: ev => {
         if (myTurn !== turn) return;

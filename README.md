@@ -108,6 +108,8 @@ picker in the call bar) and Lyra (`[scene:name]`) control them.
 
 ## Characters
 
+![Bao](docs/media/body-bao-cosmos.png)
+
 The six bodies are six distinct **characters** — each a different companion with
 their own personality, voice, and default scene: Lyra the steady one, Nova the
 spark, Mira the muse, Vesper the composed, Kira the storm, and Bao — an ancient,
@@ -117,6 +119,10 @@ in character. Never met before? They introduce themselves and ask your name. On 
 path (where your agent owns the brain), each character's persona is injected per
 turn so they stay distinct. Every `.vrm` in `public/models/` is auto-discovered —
 build your own in VRoid Studio (free) and export VRM.
+
+Body credits: the five humans are the official VRoid sample models; Bao is
+"Teddy" by Polygonal Mind (CC0, via Open Source Avatars), repainted into a
+panda and given a synthesized expression set by `scripts/fetch-assets.mjs`.
 
 ## Mocap clips
 

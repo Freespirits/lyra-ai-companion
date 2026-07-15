@@ -245,6 +245,13 @@ export class Avatar {
     const p = new THREE.Vector3();
     (this.bones.head || vrm.scene).getWorldPosition(p);
     this.headY = p.y || 1.35;
+    /* headY is the head BONE (jaw height) — fine for faces, wrong for framing:
+       a big-skulled model extends far above it and gets decapitated by the
+       camera. Frame math uses the real top of the mesh instead. */
+    try {
+      const bb = new THREE.Box3().setFromObject(vrm.scene);
+      this.topY = (isFinite(bb.max.y) && bb.max.y > this.headY) ? bb.max.y : this.headY + .15;
+    } catch (e) { this.topY = this.headY + .15; }
     this._headPrev.copy(p);
     this._headVel.set(0, 0, 0);
   }
@@ -270,9 +277,13 @@ export class Avatar {
       this.camera.position.set(0, this.headY + .04, .9);
       this.controls.target.set(0, this.headY - .05, 0);
     } else {
-      /* wide enough to keep hair in frame on a fullscreen viewport */
-      this.camera.position.set(0, this.headY * .72, this.headY * 2.35);
-      this.controls.target.set(0, this.headY * .58, 0);
+      /* wide enough to keep the crown in frame on a fullscreen viewport —
+         fractions of the mesh top, so tall or big-headed bodies fit too.
+         (For the VRoid samples topY ~= headY * 1.1, which lands within a few
+         cm of the old headY-based constants.) */
+      const t = this.topY || this.headY * 1.1;
+      this.camera.position.set(0, t * .65, t * 2.15);
+      this.controls.target.set(0, t * .52, 0);
     }
   }
 
