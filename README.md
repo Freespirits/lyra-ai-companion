@@ -19,13 +19,11 @@ typed persistent memory with reflection.
 
 | | | |
 |---|---|---|
-| ![Sakura](docs/media/scene-sakura.png) | ![Rooftop](docs/media/scene-rooftop.png) | ![Bedroom](docs/media/scene-bedroom.png) |
-| ![Gothic library](docs/media/scene-gothic-library.png) | ![Living cosmos](docs/media/scene-cosmos-live.png) | ![Body swap](docs/media/body-vesper-sakura.png) |
-| ![Teasing affect](docs/media/affect-teasing.png) | ![Devoted affect](docs/media/affect-devoted.png) | ![Call UI](docs/media/call-ui.png) |
+| ![Sakura](docs/media/scene-sakura.png) | ![Rooftop](docs/media/scene-rooftop.png) | ![Gothic library](docs/media/scene-gothic-library.png) |
+| ![Living cosmos](docs/media/scene-cosmos-live.png) | ![Body swap](docs/media/body-vesper-sakura.png) | ![Call UI](docs/media/call-ui.png) |
 
-*Live word-synced captions, a breathing state halo, [affect:teasing] smirks and
-[affect:devoted] soft eyes, scenes she switches mid-sentence, and bodies she
-can change without dropping the call.*
+*Live word-synced captions, a breathing state halo, scenes she switches
+mid-sentence, and bodies she can change without dropping the call.*
 
 ```
 Browser (Vite, three.js + three-vrm)             Node backend (Express)
@@ -95,8 +93,8 @@ The complete tag vocabulary and agent-facing contract is documented in
 
 ## Scenes
 
-`/api/scenes` merges built-in procedural skies (violet-dream, bedroom,
-sunset-beach, night-city, cosmos) with anything you drop into `public/scenes/`:
+`/api/scenes` merges built-in procedural skies (violet-dream, sunset-beach,
+night-city, cosmos) with anything you drop into `public/scenes/`:
 any equirectangular `.jpg/.png/.webp` becomes a 360° scene automatically, with
 optional lighting overrides in `public/scenes/scenes.json`:
 
@@ -150,11 +148,13 @@ Teach your agent to *perform* (gestures, expressions, scenes) with the companion
 skill on ClawHub: `openclaw skills install @Freespirits/clawlyra`
 ([clawhub.ai/Freespirits/clawlyra](https://clawhub.ai/Freespirits/clawlyra), source in `skills/clawlyra/`).
 
-**Content guard** (`LYRA_GUARD`, on by default): every reply is vetted — warmth
-and flirtation are allowed, explicit and harmful content is blocked, and she
-redirects in character. Best paired with a local classifier that *understands*
-content instead of matching keywords: `ollama pull llama-guard3:1b` and set
-`GUARD_MODEL=llama-guard3:1b`. `LYRA_GUARD=off` disables it for private use.
+**Content guard** (`LYRA_GUARD`, on by default): every reply is vetted — warm,
+friendly, playful talk is allowed, while romantic, flirtatious, sexual, and
+harmful content is blocked, and she redirects in character. Best paired with a
+local classifier that *understands* content instead of matching keywords:
+`ollama pull llama-guard3:1b` and set `GUARD_MODEL=llama-guard3:1b`. Note that the
+characters' no-romance boundary is baked into their personas and always on — it is
+not controlled by this toggle; `LYRA_GUARD=off` only disables the moderation pass.
 
 **STT**: set `DEEPGRAM_API_KEY` for Deepgram nova live streaming (server-side
 relay on `/stt`, best accuracy + endpointing); without it, the free Web Speech

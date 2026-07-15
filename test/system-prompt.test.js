@@ -11,12 +11,12 @@ const base = {
   now: 'Monday, 21:30',
   audioTags: ['laughs', 'softly', 'sighs'],
   gestures: ['wave', 'nod', 'dance'],
-  affects: ['teasing', 'focused', 'devoted', 'fierce', 'neutral'],
+  affects: ['teasing', 'focused', 'warm', 'fierce', 'neutral'],
 };
 
 test('the prompt weaves guardrails, persona, and mechanics in order', () => {
   const p = buildSystemPrompt(base);
-  const gi = p.indexOf('sexually explicit');
+  const gi = p.indexOf('never sexual');
   const pi = p.indexOf('You are Vesper');
   const mi = p.indexOf('You control your world');
   assert.ok(gi > -1 && pi > -1 && mi > -1, 'all three layers present');

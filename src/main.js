@@ -3,7 +3,7 @@ import { AnimController } from './animations.js';
 
 /* gestures that should be HELD (looping dance / static pose) rather than
    played once and released back to idle */
-const HELD_GESTURES = new Set(['lay', 'crouch', 'dance', 'workout']);
+const HELD_GESTURES = new Set(['lay', 'crouch', 'dance', 'workout', 'stance', 'meditate']);
 import { lip, playClip } from './speech.js';
 import { streamChat, SegmentPlayer } from './stream.js';
 import { SceneManager } from './scenes.js';
@@ -14,7 +14,7 @@ import { API, getUserName, lyraSetName } from './config.js';
 
 const $ = id => document.getElementById(id);
 const logEl = $('log'), inp = $('inp'), fxEl = $('fx');
-const loadEl = $('loading'), loadMsg = $('loadMsg'), heartsEl = $('hearts'), toastEl = $('toast');
+const loadEl = $('loading'), loadMsg = $('loadMsg'), toastEl = $('toast');
 const capUser = $('capUser'), capLyra = $('capLyra'), statusEl = $('status'), timerEl = $('timer');
 
 /* ---------------- app state ---------------- */
@@ -87,7 +87,7 @@ function setState(s) {
 function idleFlavor() {
   const e = avatar.emotion;
   if (e === 'sad' && anim.has('sad')) return 'sad';
-  if ((e === 'happy' || e === 'excited' || e === 'flirty') && anim.has('happy')) return 'happy';
+  if ((e === 'happy' || e === 'excited') && anim.has('happy')) return 'happy';
   return 'idle';
 }
 
@@ -99,6 +99,7 @@ function doGesture(g) {
     no: 'no', cocky: 'cocky', angry: 'angry', lookaway: 'lookaway',
     sigh: 'sigh', dance: 'dance', jump: 'jump',
     lay: 'lay', crouch: 'crouch', workout: 'workout',
+    bow: 'bow', stance: 'stance', kungfu: 'kungfu', meditate: 'meditate',
   }[g];
   if (anim && clipName) {
     /* held acts loop/hold as the base until the next state change; the rest
@@ -156,21 +157,11 @@ function lyraBubbleAppend(text) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 function toast(t) { toastEl.textContent = t; toastEl.classList.add('show'); setTimeout(() => toastEl.classList.remove('show'), 2800); }
-function renderHearts() {
-  const filled = Math.min(5, 1 + Math.floor(exchanges / 3));
-  heartsEl.innerHTML = '';
-  for (let i = 0; i < 5; i++) {
+function spawnFx() {
+  for (let i = 0; i < 6; i++) {
     const s = document.createElement('span');
-    s.textContent = '♥';
-    if (i >= filled) s.className = 'off';
-    heartsEl.appendChild(s);
-  }
-}
-function spawnFx(kind) {
-  for (let i = 0; i < (kind === 'hearts' ? 5 : 6); i++) {
-    const s = document.createElement('span');
-    s.className = kind;
-    s.textContent = kind === 'hearts' ? '♥' : '✦';
+    s.className = 'sparkle';
+    s.textContent = '✦';
     s.style.left = (32 + Math.random() * 36) + '%';
     s.style.bottom = (26 + Math.random() * 22) + '%';
     s.style.animationDelay = (Math.random() * .4) + 's';
@@ -287,7 +278,7 @@ function bargeIn() {
 function handleCtl(ev) {
   if (ev.kind === 'gesture') doGesture(ev.name);
   else if (ev.kind === 'affect') avatar.setAffect(ev.name);
-  else if (ev.kind === 'remember') { toast('She’ll remember that ♥'); spawnFx('hearts'); }
+  else if (ev.kind === 'remember') { toast('She’ll remember that.'); spawnFx(); }
   else if (ev.kind === 'scene') {
     if (turn === userSceneTurn) return;   /* you picked a scene mid-reply: yours wins */
     sceneMgr.apply(ev.name).then(ok => { if (ok) markScenePicker(ev.name); });
@@ -347,7 +338,7 @@ async function handleUser(text, opts = {}) {
         else if (ev.type === 'ctl') handleCtl(ev);
         else if (ev.type === 'done') {
           full = ev.full || '';
-          if (full) { history.push({ role: 'assistant', content: full }); exchanges++; renderHearts(); }
+          if (full) { history.push({ role: 'assistant', content: full }); }
           myPlayer.finish();
         }
         else if (ev.type === 'error') { toast('Brain error: ' + ev.message); myPlayer.finish(); }
@@ -541,7 +532,7 @@ async function boot() {
         if (v.expression === 'happy' && lastSeenExpression !== 'happy') avatar.nudgeMood('happy', .35);
         if (v.expression === 'surprised') avatar.nudgeMood('surprised', .3);
         if (v.expression === 'sad' && lastSeenExpression !== 'sad') {
-          avatar.setAffect('devoted');            /* comfort before a word is said */
+          avatar.setAffect('warm');               /* comfort before a word is said */
           avatar.nudgeMood('sad', .3);
         }
         /* the magic beat: she notices a real change and says something first */
@@ -611,7 +602,6 @@ async function boot() {
     fetch(API('/api/fillers')).then(r => r.json()).then(j => { fillers = j.clips || []; }).catch(() => {});
 
     loadEl.style.display = 'none';
-    renderHearts();
     setState(S.IDLE);
     /* console debug handle */
     window.lyra = { avatar, sceneMgr, get anim() { return anim; }, get state() { return state; } };

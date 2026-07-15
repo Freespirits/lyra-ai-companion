@@ -34,7 +34,7 @@ Shows all four differentiators at once: real-time reply, lip-sync, expression, g
 | `guess what — I got the job!` | gasp + bounce + excited |
 | `I'm a little nervous about tomorrow` | `[affect:focused]` soft, `[gesture:nod]`, tender |
 | `take me somewhere beautiful` | `[scene:...]` change mid-line |
-| `you're such a tease` | `[affect:teasing]` `[gesture:wink]` |
+| `okay that was actually hilarious` | `[affect:teasing]` `[gesture:laughs]` |
 
 ## Capture setup (Windows)
 

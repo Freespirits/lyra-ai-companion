@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ARCHETYPES, GUARDRAILS, resolveArchetype, pickVoice } from '../server/archetypes.js';
 
-test('there are five archetypes with body-matching ids', () => {
-  assert.equal(ARCHETYPES.length, 5);
-  assert.deepEqual(ARCHETYPES.map(a => a.id), ['lyra', 'nova', 'mira', 'vesper', 'kira']);
+test('there are six archetypes with body-matching ids', () => {
+  assert.equal(ARCHETYPES.length, 6);
+  assert.deepEqual(ARCHETYPES.map(a => a.id), ['lyra', 'nova', 'mira', 'vesper', 'kira', 'bao']);
 });
 
 test('every archetype is fully populated', () => {
@@ -17,10 +17,20 @@ test('every archetype is fully populated', () => {
   }
 });
 
-test('guardrails forbid explicit content and harm, and use the name token', () => {
+test('guardrails forbid romance/flirtation/sex and harm, and use the name token', () => {
   assert.match(GUARDRAILS, /\{userName\}/);
-  assert.match(GUARDRAILS, /sexually explicit/i);
+  assert.match(GUARDRAILS, /never romantic/i);
+  assert.match(GUARDRAILS, /never sexual/i);
   assert.match(GUARDRAILS, /harm|hurt/i);
+});
+
+test('no archetype persona or tagline carries romantic/sexual framing', () => {
+      '<scrubbed from history: the original text was machine-authored around seduction; see server/archetypes.js at HEAD>',
+  for (const a of ARCHETYPES) {
+    assert.doesNotMatch(a.persona, banned, `${a.id} persona`);
+    assert.doesNotMatch(a.tagline, banned, `${a.id} tagline`);
+    assert.doesNotMatch(a.greeting, banned, `${a.id} greeting`);
+  }
 });
 
 test('resolveArchetype falls back to the first archetype for unknown ids', () => {

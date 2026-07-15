@@ -19,9 +19,8 @@ import { PostFX, initialTier, applyCelMaterials } from './render-fx.js';
 
 export const EMO = {
   neutral:   { expr: { relaxed: .15 },              lid: .05, gaze: { x: 0,  y: 0 } },
-  happy:     { expr: { happy: .95 },                lid: 0,   gaze: { x: 0,  y: 0 },    fx: 'hearts' },
+  happy:     { expr: { happy: .95 },                lid: 0,   gaze: { x: 0,  y: 0 },    fx: 'sparkle' },
   excited:   { expr: { happy: 1, surprised: .2 },   lid: 0,   gaze: { x: 0,  y: 0 },    fx: 'sparkle' },
-  flirty:    { expr: { happy: .35, relaxed: .55 },  lid: .42, gaze: { x: 0,  y: -.06 }, fx: 'hearts' },
   surprised: { expr: { surprised: 1 },              lid: 0,   gaze: { x: 0,  y: 0 },    fx: 'sparkle' },
   sad:       { expr: { sad: .9 },                   lid: .22, gaze: { x: 0,  y: -.12 } },
   thinking:  { expr: { relaxed: .3 },               lid: .12, gaze: { x: .3, y: .22 } },
@@ -34,13 +33,13 @@ const VIS_EXPR = ['aa', 'ih', 'ou', 'ee', 'oh'];
    don't decay — they ARE how she's carrying herself right now.
      teasing  = smirk (smug happy/angry blend), heavy lids, head tilt
      focused  = serious brow, steady gaze (saccades damped), lean-in
-     devoted  = soft eyes, blush (if the model has the blendshape), gentle tilt
+     warm     = soft, warm eyes, gentle tilt (loyal-friend attentiveness)
      fierce   = hard brow, locked gaze, squared posture                     */
 export const AFFECTS = {
   neutral: { expr: {},                                          lid: 0,   tiltZ: 0,    lean: 0,    gazeY: 0,    sacc: 1 },
   teasing: { expr: { happy: .38, relaxed: .28, angry: .12 },    lid: .2,  tiltZ: .09,  lean: 0,    gazeY: -.04, sacc: 1 },
   focused: { expr: { angry: .1, relaxed: .12 },                 lid: .05, tiltZ: 0,    lean: .05,  gazeY: 0,    sacc: .45 },
-  devoted: { expr: { relaxed: .45, happy: .22, blush: .55 },    lid: .2,  tiltZ: .05,  lean: .02,  gazeY: -.05, sacc: .7 },
+  warm:    { expr: { relaxed: .45, happy: .22 },                lid: .2,  tiltZ: .05,  lean: .02,  gazeY: -.05, sacc: .7 },
   fierce:  { expr: { angry: .35, surprised: .08 },              lid: .1,  tiltZ: -.05, lean: .04,  gazeY: 0,    sacc: .5 },
 };
 
@@ -292,7 +291,7 @@ export class Avatar {
     this.affect = name;
     if (name === 'teasing') this.proceduralGesture('tilt');
     else if (name === 'focused') this.microLean(1.5);
-    else if (name === 'devoted') { this.micro.breathBoost = 1; this.microExpression('happy', .3, 1.4); }
+    else if (name === 'warm') { this.micro.breathBoost = 1; this.microExpression('happy', .3, 1.4); }
     else if (name === 'fierce') this.microExpression('surprised', .25, .5);
   }
   /* face tracking: her eyes follow you around the frame */
@@ -364,7 +363,7 @@ export class Avatar {
       if (this.blinkT > .16 + Math.abs(this.blinkAsym)) { this.blinkT = -1; this.blink = 0; blinkL = blinkR = 0; }
     }
     if (this.winkT > 0) this.winkT -= dt;
-    /* sustained droop is capped: bedroom eyes yes, asleep no */
+    /* sustained droop is capped: relaxed half-lidded eyes yes, asleep no */
     this.lid = lerp(this.lid, Math.min(.26, blend.lid + AD.lid * aw), 1 - Math.exp(-dt * 6));
 
     /* saccadic gaze: instant micro-jumps, fixation jitter between them.

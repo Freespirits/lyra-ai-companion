@@ -6,12 +6,13 @@
        -> stripped from the TTS text, emitted as control events.
    This module is pure functions/classes so it can be unit-tested with node. */
 
-export const EMOTIONS = ['neutral', 'happy', 'excited', 'flirty', 'surprised', 'sad', 'thinking'];
+export const EMOTIONS = ['neutral', 'happy', 'excited', 'surprised', 'sad', 'thinking'];
 export const GESTURES = ['nod', 'tilt', 'wink', 'bounce', 'wave', 'shrug',
   'no', 'cocky', 'angry', 'lookaway', 'sigh', 'dance', 'jump',
-  'lay', 'crouch', 'workout'];
+  'lay', 'crouch', 'workout',
+  'bow', 'stance', 'kungfu', 'meditate'];   /* kung fu set — suits Bao the panda */
 /* sustained stances (dynamic affect): unlike mood bursts these persist until changed */
-export const AFFECTS = ['neutral', 'teasing', 'focused', 'devoted', 'fierce'];
+export const AFFECTS = ['neutral', 'teasing', 'focused', 'warm', 'fierce'];
 
 /* audio tag -> mood nudge on the avatar's continuous mood vector */
 export const TAG_MOOD = {
@@ -23,11 +24,10 @@ export const TAG_MOOD = {
   excited:       { emotion: 'excited',   w: .9 },
   gasps:         { emotion: 'surprised', w: .8 },
   surprised:     { emotion: 'surprised', w: .7 },
-  whispers:      { emotion: 'flirty',    w: .6 },
-  mischievously: { emotion: 'flirty',    w: .7 },
-  teasing:       { emotion: 'flirty',    w: .6 },
-  flirtatiously: { emotion: 'flirty',    w: .8 },
-  sarcastic:     { emotion: 'flirty',    w: .4 },
+  whispers:      { emotion: 'neutral',   w: .4 },
+  mischievously: { emotion: 'happy',     w: .6 },
+  teasing:       { emotion: 'happy',     w: .5 },
+  sarcastic:     { emotion: 'happy',     w: .3 },
   sighs:         { emotion: 'sad',       w: .5 },
   sadly:         { emotion: 'sad',       w: .8 },
   crying:        { emotion: 'sad',       w: 1 },

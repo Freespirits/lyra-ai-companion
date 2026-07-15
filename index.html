@@ -41,7 +41,6 @@
 
   #fx{position:fixed;inset:0;z-index:3;pointer-events:none;overflow:hidden}
   #fx span{position:absolute;animation:floatUp 2s ease-out forwards}
-  #fx .hearts{color:var(--speak);text-shadow:0 0 10px rgba(255,107,157,.6)}
   #fx .sparkle{color:var(--think);text-shadow:0 0 10px rgba(255,209,102,.6)}
   @keyframes floatUp{0%{opacity:0;transform:translateY(0) scale(.6)}15%{opacity:1}100%{opacity:0;transform:translateY(-130px) scale(1.15) rotate(14deg)}}
 
@@ -54,8 +53,6 @@
   body[data-s="thinking"]  #status::before{background:var(--think); box-shadow:0 0 8px var(--think)}
   body[data-s="speaking"]  #status::before{background:var(--speak); box-shadow:0 0 8px var(--speak)}
   body.incall #status::before{background:var(--listen)}
-  #hearts{position:fixed;top:20px;right:22px;z-index:5;font-size:15px;letter-spacing:3px;color:var(--speak);text-shadow:0 0 12px rgba(255,107,157,.5)}
-  #hearts .off{color:#3d3260;text-shadow:none}
 
   /* ---------- captions ---------- */
   /* floating composer on the main stage */
@@ -199,7 +196,6 @@
     <h1>Lyra</h1>
     <div id="status">offline</div>
   </div>
-  <div id="hearts"></div>
 
   <div id="caps">
     <div id="capUser" dir="auto"></div>
@@ -277,7 +273,7 @@
       </div>
       <div class="dbgRow" id="exprRow">
         <button data-emo="neutral">neutral</button><button data-emo="happy">happy</button>
-        <button data-emo="excited">excited</button><button data-emo="flirty">flirty</button>
+        <button data-emo="excited">excited</button>
         <button data-emo="surprised">surprised</button><button data-emo="sad">sad</button>
         <button data-ges="nod">nod</button><button data-ges="tilt">tilt</button>
         <button data-ges="wink">wink</button><button data-ges="bounce">bounce</button><button data-ges="wave">wave</button>
@@ -288,7 +284,7 @@
       <div class="dbgRow">
         <span style="letter-spacing:.1em;text-transform:uppercase;font-size:10.5px;align-self:center">affect</span>
         <button data-aff="neutral">neutral</button><button data-aff="teasing">teasing</button>
-        <button data-aff="focused">focused</button><button data-aff="devoted">devoted</button>
+        <button data-aff="focused">focused</button><button data-aff="warm">warm</button>
         <button data-aff="fierce">fierce</button>
       </div>
     </details>

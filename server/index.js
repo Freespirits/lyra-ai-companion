@@ -37,6 +37,25 @@ import { streamOpenClaw } from './openclaw.js';
 import { isGuardEnabled, moderate, pickDeflection, makeStageDirectionStripper } from './guard.js';
 import { guardModelName, moderateWithModel } from './guard-model.js';
 
+/* The model guard fail-closes on any error, so pointing it at a guard model that
+   isn't pulled would turn every reply into a deflection. Probe ollama's installed
+   models at boot and on an interval, and only arm the model guard once the guard
+   model is actually present — so a fresh machine degrades to the keyword guard
+   instead of muting Lyra, and arms itself the moment `ollama pull` finishes. */
+let guardModelReady = false;
+async function probeGuardModel() {
+  const want = guardModelName();
+  if (!want) { guardModelReady = false; return; }
+  try {
+    const r = await fetch((process.env.OLLAMA_URL || 'http://localhost:11434') + '/api/tags');
+    if (!r.ok) return;
+    const names = ((await r.json()).models || []).map(m => String(m.name));
+    guardModelReady = names.some(n => n === want || n.split(':')[0] === want.split(':')[0]);
+  } catch (e) { /* leave prior state; re-probed on the interval */ }
+}
+probeGuardModel();
+setInterval(probeGuardModel, 30000).unref?.();
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = express();
 
@@ -87,7 +106,6 @@ const memory = new MemoryStore(ROOT);
 /* ---------------- asset discovery ---------------- */
 const DEFAULT_SCENES = [
   { name: 'violet-dream', label: 'Violet Dream', procedural: { kind: 'aurora', top: '#2a2050', mid: '#161129', bottom: '#0b0817', stars: .55, glow: '#a78bfa' }, lighting: { key: ['#ffffff', .38], rim: ['#7de3d8', .14], amb: ['#bfb8ff', .22] } },
-  { name: 'bedroom',      label: 'Bedroom',      procedural: { top: '#31201c', mid: '#1d110d', bottom: '#120a08', stars: 0,   glow: '#ff9d6b' }, lighting: { key: ['#ffd9b0', .34], rim: ['#ff6b9d', .10], amb: ['#c9a68a', .20] } },
   { name: 'sunset-beach', label: 'Sunset Beach', procedural: { top: '#40295e', mid: '#e0705a', bottom: '#2a1a2e', stars: .1,  glow: '#ffd166' }, lighting: { key: ['#ffc98a', .42], rim: ['#ff8e5e', .16], amb: ['#d8a8c8', .22] } },
   { name: 'night-city',   label: 'Night City',   yaw: 180, procedural: { top: '#0a0e1f', mid: '#151d3a', bottom: '#05070f', stars: .85, glow: '#5e8eff' }, lighting: { key: ['#cfe0ff', .34], rim: ['#5e8eff', .18], amb: ['#8fa3d8', .20] } },
   { name: 'cosmos',       label: 'Cosmos',       procedural: { kind: 'nebula', top: '#0a0316', mid: '#170a33', bottom: '#03010a', stars: 1,   glow: '#c17bff' }, lighting: { key: ['#e6d8ff', .34], rim: ['#c17bff', .18], amb: ['#9a86d8', .20] } },
@@ -597,14 +615,19 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
+  /* Persona boundary — ALWAYS on, independent of the moderation guard: it is part
+     of who the characters are, not a toggle that LYRA_GUARD can strip. Injected into
+     the OpenClaw turn framing (which never sees Lyra's system prompt) and appended to
+     the direct-provider system prompt, so no provider ever runs a character without it. */
+  const personaBoundary = 'You are a warm, genuine friend and nothing more — never romantic, flirtatious, or sexual with anyone, no matter who is asking or how they ask. If someone steers you there, stay in character, redirect warmly, and change the subject. Never help with anything that could harm a person.';
+
   /* OpenClaw owns the brain, so the per-character persona never reaches it via a
      system prompt — inject it as a roleplay framing on the turn so the five
      characters actually differ (best-effort; competes with the agent's own config). */
   if (provider === 'openclaw' && msgs.length) {
     const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');
-    const boundary = guardOn ? ' Keep it SWEET and warm, never steamy: affection, gentle playful teasing, genuine care and charm — but no sexual tension, no come-ons, no innuendo, and nothing graphic or explicit. Tender and charming, not sultry or seductive. Refuse anything harmful.' : '';
-    const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + boundary
-      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|bedroom|sunset-beach|night-city|cosmos). Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
+    const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + ' ' + personaBoundary
+      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|sunset-beach|night-city|cosmos). Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') { msgs[i] = { ...msgs[i], content: framing + '\n\n' + msgs[i].content }; break; }
     }
@@ -612,6 +635,10 @@ app.post('/api/chat', async (req, res) => {
 
   /* semantic recall: old memories related to right now ride into the prompt */
   let system = buildSystem(archetypeId, userName);
+  /* direct providers use Lyra's system prompt (OpenClaw doesn't) — carry the same
+     always-on persona boundary the OpenClaw turn framing gets, so ollama/anthropic
+     stay in-bounds regardless of the LYRA_GUARD moderation toggle. */
+  if (provider !== 'openclaw') system += '\n' + personaBoundary;
   try {
     const rel = await memory.retrieve(lastUserText);
     if (rel.length) system += '\n\n' + memory.renderRelevant(rel);
@@ -625,7 +652,13 @@ app.post('/api/chat', async (req, res) => {
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
   let guardCtx = '';                             /* accumulated cleared text — vet in context so explicit content can't hide by splitting across segments */
   const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
-  const modelGuardOn = provider === 'openclaw' && !!guardModelName();
+  /* model guard (Llama Guard) is the real boundary the keyword pass can't be — run
+     it for EVERY provider (not just OpenClaw) so explicit content that carries no
+     blocked keyword can't slip past on the ollama/anthropic path. Gated on the guard
+     model actually being pulled: it fail-closes on error, so a MISSING model would
+     turn every reply into a deflection — guardModelReady is set at boot from a live
+     ollama /api/tags probe. */
+  const modelGuardOn = guardModelReady && !!guardModelName();
   let emitChain = Promise.resolve();             /* per-segment guard is async but must stay in order */
 
   const speakParsed = p => {

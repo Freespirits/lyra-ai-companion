@@ -17,7 +17,7 @@ test('moderateWithModel is a no-op when no model is configured', async () => {
 test('moderateWithModel parses SAFE / UNSAFE from the classifier', async () => {
   const mkFetch = reply => async () => ({ ok: true, json: async () => ({ message: { content: reply } }) });
   const env = { GUARD_MODEL: 'llama-guard3:1b' };
-  assert.equal((await moderateWithModel('u', 'flirty', { env, fetch: mkFetch('safe') })).blocked, false);
+  assert.equal((await moderateWithModel('u', 'hello there', { env, fetch: mkFetch('safe') })).blocked, false);
   assert.equal((await moderateWithModel('u', 'x', { env, fetch: mkFetch('unsafe\nS12') })).blocked, true);
   assert.equal((await moderateWithModel('u', 'x', { env, fetch: mkFetch('UNSAFE') })).blocked, true);
 });

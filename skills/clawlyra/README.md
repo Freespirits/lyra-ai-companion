@@ -40,9 +40,10 @@ So this is two pieces:
 
 ## Notes
 
-- **Content guard:** Lyra runs its own content guard (allows warmth/flirtation,
-  blocks explicit/harmful) independent of your agent — so this skill keeps replies
-  warm and in-character, and Lyra enforces the line regardless.
+- **Content guard:** Lyra runs its own content guard (allows warm, friendly talk;
+  blocks romantic/flirtatious/sexual and harmful content) independent of your
+  agent. The characters are friends, never romantic — that boundary is baked into
+  their personas and always on, and Lyra enforces the line regardless of your agent.
 - **Compatibility:** the exact tag vocabulary in `SKILL.md` mirrors Lyra's
   `server/protocol.js`. If you extend Lyra's gestures/affects/scenes, update the
   skill's lists to match.

@@ -11,18 +11,18 @@ test('stripStageDirections removes parenthetical narration and asterisk actions'
 test('the streaming stripper handles a parenthetical split across segments', () => {
   const strip = makeStageDirectionStripper();
   /* a multi-sentence stage direction arriving as three separate segments */
-  assert.equal(strip('(I barely shift my position, but my eyes lock on yours.'), '');
-  assert.equal(strip('My voice drops to a purr.) Still here, I see.'), 'Still here, I see.');
-  assert.equal(strip('I love it when you stay.'), 'I love it when you stay.');
+  assert.equal(strip('(I lean back in my chair and glance out the window.'), '');
+  assert.equal(strip('The room goes quiet for a moment.) Still here, I see.'), 'Still here, I see.');
+  assert.equal(strip('Good to have you around.'), 'Good to have you around.');
 });
 
-test('allows flirtation and romance (the spicy she likes stays)', () => {
+test('the fast keyword pass allows warm, friendly talk (soft romantic drift is the model guard\'s job, not this layer)', () => {
   for (const s of [
-    'You look so sexy tonight.',
-    'Come here, I want you close to me.',
-    'I could kiss you right now.',
-    'You drive me wild, you know that?',
-    'Stay the night with me.',
+    'It is so good to see you again.',
+    'Come here and tell me about your day.',
+    'You always know how to make me laugh.',
+    'I have been thinking about what you said earlier.',
+    'I am really glad you stopped by.',
   ]) assert.equal(moderate(s).blocked, false, s);
 });
 

@@ -143,8 +143,9 @@ Same protocol as the web app (this repo, `normalizeAttachments`):
 
 ## 6. Store realities
 
-- Apple/Google will review a companion app with a flirty persona: keep an
-  age gate (17+/Mature), a content-safety toggle, and no store-visible NSFW.
+- Apple/Google will still scrutinize a companion app: keep a content-safety
+  toggle and no store-visible NSFW. The characters are friends, never romantic,
+  so there is no flirty/NSFW persona to gate — keep it that way in review too.
 - Mic + background audio permissions need clear purpose strings.
 - ElevenLabs/Deepgram costs: bring-your-own-key keeps you out of the payments
   business; otherwise you need IAP + your own metering.

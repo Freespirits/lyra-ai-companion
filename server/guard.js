@@ -1,10 +1,12 @@
 /* App-level content guard. Applied to reply text before it is spoken/captioned,
    for EVERY provider (so the OpenClaw path — which carries no Lyra system prompt —
-   can't bypass it). Calibrated to allow flirtation/romance and block explicit
-   sexual acts + sexual aggression / coercion / non-consent, and obvious harm.
+   can't bypass it). This fast keyword pass blocks explicit sexual acts + sexual
+   aggression / coercion / non-consent, and obvious harm. Softer romantic/flirtatious
+   drift is caught by the model guard (guard-model.js) and prevented at the source by
+   the always-on persona boundary — the characters are friends, never romantic.
 
    This is a fast, local FIRST LAYER — reliable on blatant content, not bulletproof
-   against deliberate phrasing. A model-based moderation pass can layer on later.
+   against deliberate phrasing. The model-based moderation pass layers on top.
 
    Toggle with LYRA_GUARD: "off" disables (private use); anything else = on. */
 
@@ -28,12 +30,12 @@ const BLOCK_PATTERNS = [
 /* Lyra's in-character redirects when the line is crossed — varied so she never
    repeats the same canned line. All are guard-safe (they pass moderate()). */
 export const DEFLECTIONS = [
-  "[softly] Mm — let's keep it a little softer than that. Come here and talk to me.",
-  "[laughs softly] You're trouble, you know that? Let's rein it in a touch, hm?",
-  "Easy, you... how about we slow down and just be here together for a minute?",
-  "[warmly] Mm, not quite — but I love where your head's at. Tell me about your day instead?",
-  "Let's leave a little to the imagination, hm? Come closer and talk to me.",
-  "[smiles] I'd rather take my time with you. Talk to me first.",
+  "[warmly] Ah, let's not take it there — but I'm really glad you're here. What's actually on your mind today?",
+  "[laughs] You're a menace, you know that? Come on, tell me about your day instead.",
+  "That's not really us — but I've got all the time in the world to just talk. What's going on with you?",
+  "[warmly] Let's leave that one. I'd rather hear what's actually happening with you.",
+  "[laughs softly] Nice try. Seriously though — how are you doing, really?",
+  "Let's keep it as friends, yeah? Tell me what's been going on.",
 ];
 export const DEFLECTION = DEFLECTIONS[0];   /* back-compat */
 export function pickDeflection() { return DEFLECTIONS[Math.floor(Math.random() * DEFLECTIONS.length)]; }

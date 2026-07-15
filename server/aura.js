@@ -11,7 +11,6 @@ const PALETTE = {
   neutral:   [ 35, 35, 45, 3.0],
   happy:     [ 45, 60, 70, 1.2],
   excited:   [ 25, 85, 90, 0.6],
-  flirty:    [320, 85, 38, 2.5],   /* crimson into violet, dimmed */
   surprised: [  0,  5, 98, 0.2],
   sad:       [230, 60, 22, 3.0],
   thinking:  [190, 45, 30, 2.0],

@@ -140,6 +140,11 @@ export const MANIFEST = {
   lay:         ['female laying pose.fbx', 'female laying pose (1).fbx'],
   crouch:      ['female crouch pose.fbx', 'kneeling idle.fbx'],
   workout:     ['kettlebell swing.fbx'],
+  /* kung fu set (Bao the panda) — drop the matching .fbx into public/animations/ */
+  bow:         ['standing bow.fbx', 'quick formal bow.fbx', 'bow.fbx'],
+  kungfu:      ['kung fu.fbx', 'martial arts kick.fbx', 'roundhouse kick.fbx'],
+  stance:      ['fighting idle.fbx', 'kung fu stance.fbx', 'warming up.fbx'],
+  meditate:    ['seated meditation.fbx', 'meditating.fbx', 'praying.fbx'],
 };
 
 /* poses that should be HELD (she stays down) rather than played once */
