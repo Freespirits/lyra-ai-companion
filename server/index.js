@@ -5,7 +5,7 @@
                      generating. Event types:
                        {type:'seg',   i, caption, mood[], tts}
                        {type:'audio', i, format, audio, marks[]}   (audio may be null)
-                       {type:'ctl',   kind:'scene'|'avatar'|'gesture', name}
+                       {type:'ctl',   kind:'scene'|'gesture'|'affect'|'remember'|'name', name}
                        {type:'done',  full, turnId} | {type:'interrupted'} | {type:'error'}
    /api/interrupt -> abort in-flight generation (barge-in / override)
    /api/scenes    -> scene manifest (procedural defaults + public/scenes/)
@@ -635,7 +635,7 @@ app.post('/api/chat', async (req, res) => {
       ? ' Their name is ' + userName + '.'
       : ' You do not know their name yet. Ask, and the moment they tell you, save it with [name:What they said] — once, without announcing it, then just use it.';
     const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + ' ' + personaBoundary + naming
-      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|sunset-beach|night-city|cosmos); [remember:one short line] keeps something that matters. Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
+      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = ' + listScenes().map(s => s.name).join('|') + '). Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') { msgs[i] = { ...msgs[i], content: framing + '\n\n' + msgs[i].content }; break; }
     }
@@ -658,6 +658,7 @@ app.post('/api/chat', async (req, res) => {
   const ttsJobs = [];
   let segIdx = 0, full = '';
   let guardTripped = false;                      /* once a reply crosses the line, she redirects and the turn ends */
+  let deflection = '';                           /* what she ACTUALLY said instead — see the done event below */
   let guardCtx = '';                             /* accumulated cleared text — vet in context so explicit content can't hide by splitting across segments */
   const stripStage = makeStageDirectionStripper();   /* OpenClaw narrates in parens across segments */
   /* model guard (Llama Guard) is the real boundary the keyword pass can't be — run
@@ -671,7 +672,12 @@ app.post('/api/chat', async (req, res) => {
 
   const speakParsed = p => {
     for (const ev of p.events) {
-      if (ev.kind === 'remember' && memWritable) memory.addFacts([ev.name], 'moment');
+      if (ev.kind === 'remember') {
+        /* Don't toast "She'll remember that" for a write that isn't happening:
+           memory is read-only on OpenClaw (memWritable), so swallow the event. */
+        if (!memWritable) continue;
+        memory.addFacts([ev.name], 'moment');
+      }
       send({ type: 'ctl', ...ev });
     }
     if (!p.caption) return;                       /* pure-directive segment */
@@ -697,7 +703,7 @@ app.post('/api/chat', async (req, res) => {
     const p = parseSegment(text);
     if (!p.caption) { speakParsed(p); return; }   /* pure-directive: fire ctl events, nothing to vet */
     const combined = (guardCtx + ' ' + p.caption).trim().slice(-4000);   /* vet in running context, not one isolated sentence */
-    if (guardOn && moderate(combined).blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
+    if (guardOn && moderate(combined).blocked) { guardTripped = true; deflection = pickDeflection(); return speakParsed(parseSegment(deflection)); }
     if (modelGuardOn) {
       let blocked = false;
       try {
@@ -707,7 +713,7 @@ app.post('/api/chat', async (req, res) => {
         clearTimeout(timer);
       } catch (e) { blocked = true; }             /* fail-closed */
       if (guardTripped) return;
-      if (blocked) { guardTripped = true; return speakParsed(parseSegment(pickDeflection())); }
+      if (blocked) { guardTripped = true; deflection = pickDeflection(); return speakParsed(parseSegment(deflection)); }
     }
     if (guardTripped) return;
     guardCtx = combined;                          /* accept into context only after it passed */
@@ -730,9 +736,20 @@ app.post('/api/chat', async (req, res) => {
     await Promise.allSettled(ttsJobs);
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });
     else {
-      send({ type: 'done', full, turnId });
+      /* The guard stops the VOICE mid-reply, but `full` kept accumulating every
+         delta behind it. Reporting the blocked text here fed it straight back:
+         the client appends done.full to history, so next turn the model reads
+         the words it was stopped for as its own — and extractMemory mined them
+         into permanent memory, which then rides in every future system prompt.
+         Blocked text must leave no trace: she said the deflection, so that is
+         the turn, and nothing gets remembered from a reply that never happened. */
+      const spoken = guardTripped ? deflection : full;
+      send({ type: 'done', full: spoken, turnId });
       /* every couple of exchanges, quietly mine the conversation for memories */
-      if (full && memWritable && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full, { userName, charName: archetype.name }); }
+      if (spoken && !guardTripped && memWritable && ++sinceExtract >= 2) {
+        sinceExtract = 0;
+        extractMemory(provider, msgs, spoken, { userName, charName: archetype.name });
+      }
     }
   } catch (e) {
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });

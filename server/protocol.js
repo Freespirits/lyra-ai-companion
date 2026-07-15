@@ -2,7 +2,7 @@
    Two tag families:
      audio/emotion tags  [laughs] [whispers] [excited] ...  -> kept in the TTS
        text (eleven_v3 renders them as vocal emotion) AND mapped to face mood.
-     directive tags      [scene:name] [avatar:name] [gesture:wave]
+     directive tags      [scene:name] [gesture:wave] [affect:warm] [name:Ori]
        -> stripped from the TTS text, emitted as control events.
    This module is pure functions/classes so it can be unit-tested with node. */
 
@@ -39,7 +39,11 @@ export const TAG_MOOD = {
 };
 export const AUDIO_TAGS = Object.keys(TAG_MOOD);
 
-const DIRECTIVE_RE = /\[\s*(scene|avatar|gesture|affect)\s*:\s*([\w .-]+?)\s*\]/gi;
+/* No `avatar` here: [avatar:] was removed from every prompt (the user picks the
+   character, she does not turn into someone else mid-sentence), and the client
+   has no handler for it — parsing it only produced an event that was silently
+   dropped on the floor. */
+const DIRECTIVE_RE = /\[\s*(scene|gesture|affect)\s*:\s*([\w .-]+?)\s*\]/gi;
 const REMEMBER_RE = /\[\s*remember\s*:\s*([^\]\n]{4,220}?)\s*\]/gi;
 /* [name:Ori] — she learns what to call you from the conversation itself, rather
    than the app blocking on a native prompt before she has even said hello. */

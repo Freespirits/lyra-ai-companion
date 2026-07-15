@@ -25,14 +25,10 @@ window.lyraSetServer = u => {
 
 /* The user's name, asked once and woven into every character's voice.
    Kept beside the server address; changeable from the console or settings. */
-export let USER_NAME = (() => {
-  let n = localStorage.getItem('lyra-user') || '';
-  if (!n && window.Capacitor) {
-    n = (window.prompt('What should she call you?') || '').trim();
-    if (n) localStorage.setItem('lyra-user', n.slice(0, 40));
-  }
-  return n.slice(0, 40);
-})();
+/* Never prompted for. She asks in her own voice on first contact and saves the
+   answer with [name:] — filling this in from a dialog before boot would mean
+   she already "knows" you on mobile and skips the introduction entirely. */
+export let USER_NAME = (localStorage.getItem('lyra-user') || '').slice(0, 40);
 
 export const getUserName = () => USER_NAME;
 

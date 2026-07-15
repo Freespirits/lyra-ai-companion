@@ -208,20 +208,24 @@ export class AnimController {
 
   /* looping base layer with crossfade */
   setBase(state, fade = 0.4) {
-    let target = state;
-    if (!this.has(target)) target = 'idle';
+    /* Falling back to idle is right for the ambient state, but it used to also
+       report success for a state whose clip is missing — so a held gesture like
+       [gesture:meditate] with no .fbx played idle and claimed it worked, and the
+       caller never reached its procedural fallback. Say so instead. */
+    const substituted = !this.has(state);
+    const target = substituted ? 'idle' : state;
     const next = this.pick(target);
     if (!next) return false;
-    if (this.base === next && this.baseState === state) return true;
+    if (this.base === next && this.baseState === target) return !substituted;
     next.reset();
     next.setLoop(THREE.LoopRepeat, Infinity);
     next.enabled = true;
     next.fadeIn(fade).play();
     if (this.base && this.base !== next) this.base.fadeOut(fade);
     this.base = next;
-    this.baseState = state;
+    this.baseState = target;                     /* the state actually playing, so variant rotation finds its clips */
     this.variantTimer = 9 + Math.random() * 7;
-    return true;
+    return !substituted;
   }
 
   /* one-shot gesture layered over the base, then fade back */

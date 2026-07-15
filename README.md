@@ -65,9 +65,10 @@ The LLM streams plain prose with inline bracket tags — no JSON:
 - **Audio tags** `[laughs] [whispers] [sighs] [excited] [curious] ...` stay in
   the TTS text (eleven_v3 performs them as vocal emotion) and nudge the avatar's
   mood vector at the same time. One tag drives voice and face together.
-- **Directive tags** `[affect:devoted] [scene:cosmos] [gesture:wave] [remember:…]`
+- **Directive tags** `[affect:warm] [scene:cosmos] [gesture:wave] [remember:…] [name:…]`
   are stripped before TTS and executed instantly — she sets her sustained stance,
-  changes the scene, fires body language, or saves a long-term memory mid-sentence.
+  changes the scene, fires body language, saves a long-term memory mid-sentence,
+  or learns what to call you the first time you say it.
 
 The server splits the stream into sentences, synthesizes each segment
 concurrently (order-preserving), and streams NDJSON events; she starts speaking
@@ -79,7 +80,7 @@ The complete tag vocabulary and agent-facing contract is documented in
 
 ## Mood, eyes, physics (the "alive" layer)
 
-- **Mood vector**: emotions are a weighted blend (`{devoted:.8, amused:.2}`)
+- **Mood vector**: emotions are a weighted blend (`{happy:.8, surprised:.2}`)
   that tags nudge and time decays — never a binary switch. Expressions render
   the mix additively, so feelings visibly linger and leak.
 - **Saccadic gaze**: instant micro-jumps with fixation jitter and occasional
@@ -107,10 +108,12 @@ picker in the call bar) and Lyra (`[scene:name]`) control them.
 
 ## Characters
 
-The five bodies are five distinct **characters** — each a different companion
-with her own personality, voice, and default scene (warm, playful, thoughtful,
-elegant, spirited). Pick one from the character button; her body, voice, scene,
-and persona all switch together, and she greets you in character. On the OpenClaw
+The six bodies are six distinct **characters** — each a different companion with
+their own personality, voice, and default scene: Lyra the steady one, Nova the
+spark, Mira the muse, Vesper the composed, Kira the storm, and Bao — an ancient,
+absurd, permanently hungry panda who does kung fu. Pick one from the character
+button; body, voice, scene, and persona all switch together, and they greet you
+in character. Never met before? They introduce themselves and ask your name. On the OpenClaw
 path (where your agent owns the brain), each character's persona is injected per
 turn so they stay distinct. Every `.vrm` in `public/models/` is auto-discovered —
 build your own in VRoid Studio (free) and export VRM.
