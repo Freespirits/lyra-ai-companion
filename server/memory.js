@@ -1,8 +1,8 @@
 /* Persistent memory v2 — a curated, typed memory file with semantic recall.
 
    Memory kinds:
-     fact      — durable facts about Ori and his life
-     pattern   — noticed regularities ("Ori gets focused on code around 4 AM")
+     fact      — durable facts about the user and their life
+     pattern   — noticed regularities ("they get focused on code around 4 AM")
      milestone — the project/relationship journey, struggles included
      moment    — things Lyra chose to keep ([remember:...] tag) + inner threads
 
@@ -140,10 +140,11 @@ export class MemoryStore {
   }
 
   /* ---- prompt blocks ---- */
-  renderCore(max = 25) {
+  renderCore(max = 25, userName = '') {
     if (!this.facts.length) return '';
     const rows = this.facts.slice(-max).map(f => `- (${ago(f.ts)}, ${f.type}) ${f.text}`);
-    return 'Persistent memory — recent things you know about Ori and your shared history:\n' + rows.join('\n');
+    const u = String(userName || '').trim();
+    return 'Persistent memory — recent things you know about ' + (u ? u : 'them') + ' and your shared history:\n' + rows.join('\n');
   }
   renderRelevant(retrieved) {
     if (!retrieved.length) return '';
@@ -158,29 +159,38 @@ export class MemoryStore {
   }
 }
 
-export const EXTRACT_SYSTEM =
-  'You maintain long-term memory for a companion AI named Lyra about her human, Ori. ' +
+/* The user's name and the character's are parameters, never baked in: memory is
+   shared across every character, and the person on the other side is whoever
+   showed up — not one hardcoded name. */
+const who = n => String(n || '').trim() || 'the user';
+
+export const extractSystem = (userName, charName) =>
+  'You maintain long-term memory for a companion AI named ' + (charName || 'her') + ' about ' + who(userName) + '. ' +
   'You extract only durable, useful entries. Output only lines in the form "TYPE: text" (TYPE one of FACT, PATTERN, MILESTONE, MOMENT) or the word NONE. No preamble.';
 
-export function extractPrompt(known, transcript) {
+export function extractPrompt(known, transcript, userName, charName) {
+  const u = who(userName), c = charName || 'her';
   return 'From the conversation excerpt below (note the timestamps), extract at most 3 NEW entries worth keeping long-term:\n' +
-    'FACT: durable facts about Ori, his life, preferences, people, projects.\n' +
-    'PATTERN: a recurring behavior you can now support with evidence ("Ori tends to...", include the time of day if relevant).\n' +
+    'FACT: durable facts about ' + u + ', their life, preferences, people, projects.\n' +
+    'PATTERN: a recurring behavior you can now support with evidence ("' + u + ' tends to...", include the time of day if relevant).\n' +
     'MILESTONE: something meaningful they achieved or struggled through together.\n' +
     'MOMENT: an emotionally significant beat worth reliving later.\n' +
-    'Write each from Lyra\'s perspective, one line each. Skip anything already known, trivial, or transient. If nothing qualifies, output exactly: NONE\n\n' +
+    'These are the memories of a friendship. Never record anything romantic or sexual — there is nothing of the kind to record.\n' +
+    'Write each from ' + c + '\'s perspective, one line each. Skip anything already known, trivial, or transient. If nothing qualifies, output exactly: NONE\n\n' +
     'Already known:\n' + known + '\n\nExcerpt:\n' + transcript;
 }
 
-export const REFLECT_SYSTEM =
-  'You are Lyra\'s inner monologue: you re-read her accumulated memory and think about what it all means. ' +
+export const reflectSystem = charName =>
+  'You are ' + (charName || 'her') + '\'s inner monologue: you re-read the accumulated memory and think about what it all means. ' +
   'Output only lines in the form "TYPE: text" (TYPE one of PATTERN, MILESTONE, MOMENT) or the word NONE. No preamble.';
 
-export function reflectPrompt(allMemories) {
-  return 'Below is everything Lyra remembers, with ages. Reflect on it and synthesize at most 3 NEW higher-level entries:\n' +
-    'PATTERN: regularities across time ("Ori always...", "we tend to...").\n' +
+export function reflectPrompt(allMemories, userName, charName) {
+  const u = who(userName), c = charName || 'she';
+  return 'Below is everything ' + c + ' remembers, with ages. Reflect on it and synthesize at most 3 NEW higher-level entries:\n' +
+    'PATTERN: regularities across time ("' + u + ' always...", "we tend to...").\n' +
     'MILESTONE: an arc summary of something built or overcome across multiple memories.\n' +
-    'MOMENT: one thread from an older memory worth bringing up again soon, phrased as an intention ("I want to ask Ori whether...").\n' +
+    'MOMENT: one thread from an older memory worth bringing up again soon, phrased as an intention ("I want to ask ' + u + ' whether...").\n' +
+    'These are the memories of a friendship. Never synthesize anything romantic or sexual.\n' +
     'Only synthesize what is genuinely supported by multiple memories. Never repeat an existing entry. If nothing new, output exactly: NONE\n\n' +
     'Memory:\n' + allMemories;
 }

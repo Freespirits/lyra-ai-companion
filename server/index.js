@@ -28,7 +28,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { attachEars, summarizeCues } from './ears.js';
 import { attachStt, sttEnabled } from './stt.js';
-import { MemoryStore, EXTRACT_SYSTEM, extractPrompt, REFLECT_SYSTEM, reflectPrompt } from './memory.js';
+import { MemoryStore, extractSystem, extractPrompt, reflectSystem, reflectPrompt } from './memory.js';
 import { Aura } from './aura.js';
 import { parseSegment, stripAllTags, SentenceSplitter, SegmentGrouper, GESTURES, AFFECTS, AUDIO_TAGS } from './protocol.js';
 import { ARCHETYPES, resolveArchetype, pickVoice } from './archetypes.js';
@@ -150,7 +150,7 @@ function buildSystem(archetypeId, userName) {
     archetype: resolveArchetype(archetypeId),
     userName,
     sceneNames: listScenes().map(s => s.name),
-    memoryCore: memory.renderCore(),
+    memoryCore: memory.renderCore(25, userName),
     now: new Date().toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false }),
     audioTags: AUDIO_TAGS,
     gestures: GESTURES,
@@ -240,7 +240,7 @@ function normalizeAttachments(messages, provider) {
     if (provider === 'ollama') {
       const images = media.filter(a => a.kind === 'image').map(a => a.data);
       const pdfs = media.filter(a => a.kind === 'pdf');
-      if (pdfs.length) text += '\n[PDF attached (' + pdfs.map(a => a.name).join(', ') + ') — this provider cannot read PDFs; ask Ori to describe it or switch LLM_PROVIDER=anthropic]';
+      if (pdfs.length) text += '\n[PDF attached (' + pdfs.map(a => a.name).join(', ') + ') — this provider cannot read PDFs; ask them to describe it or switch LLM_PROVIDER=anthropic]';
       const out = { role: m.role, content: text };
       if (images.length) out.images = images;
       return out;
@@ -255,11 +255,13 @@ function normalizeAttachments(messages, provider) {
    No API key: these spawn locally installed CLIs that carry the user's own
    subscription login (claude -p = Claude sub, codex exec = ChatGPT sub,
    gemini = Google account). Single-shot: history is rendered into the prompt. */
-function renderTranscript(msgs) {
+function renderTranscript(msgs, userName, charName) {
+  const you = userName || 'They';
+  const her = charName || 'She';
   const turns = msgs.map(m =>
-    (m.role === 'user' ? 'Ori: ' : 'Lyra: ') +
+    (m.role === 'user' ? you + ': ' : her + ': ') +
     (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n\n');
-  return 'Conversation so far:\n\n' + turns + '\n\nWrite Lyra\'s next reply only — no name prefix, no quotes.';
+  return 'Conversation so far:\n\n' + turns + '\n\nWrite ' + her + '\'s next reply only — no name prefix, no quotes.';
 }
 
 function runCli(cmd, args, promptText, ac, onLine, onChunk) {
@@ -291,8 +293,8 @@ function runCli(cmd, args, promptText, ac, onLine, onChunk) {
   });
 }
 
-async function streamClaudeCode(msgs, ac, onDelta, system) {
-  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs);
+async function streamClaudeCode(msgs, ac, onDelta, system, names = {}) {
+  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs, names.userName, names.charName);
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--max-turns', '1'];
   if (process.env.CLAUDE_CLI_MODEL) args.push('--model', process.env.CLAUDE_CLI_MODEL);
   let gotDelta = false, full = '';
@@ -309,8 +311,8 @@ async function streamClaudeCode(msgs, ac, onDelta, system) {
   if (!gotDelta && full) onDelta(full);
 }
 
-async function streamCodex(msgs, ac, onDelta, system) {
-  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs);
+async function streamCodex(msgs, ac, onDelta, system, names = {}) {
+  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs, names.userName, names.charName);
   let got = false;
   await runCli('codex', ['exec', '--json', '-'], prompt, ac, line => {
     let j; try { j = JSON.parse(line); } catch (e) { return; }
@@ -322,8 +324,8 @@ async function streamCodex(msgs, ac, onDelta, system) {
   if (!got) throw new Error('codex produced no reply (is it installed and logged in?)');
 }
 
-async function streamGeminiCli(msgs, ac, onDelta, system) {
-  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs);
+async function streamGeminiCli(msgs, ac, onDelta, system, names = {}) {
+  const prompt = (system || buildSystem()) + '\n\n---\n\n' + renderTranscript(msgs, names.userName, names.charName);
   await runCli('gemini', [], prompt, ac, null, chunk => {
     /* plain text stream; drop known startup noise lines */
     const clean = chunk.split('\n').filter(l => !/^(Loaded cached|Data collection|MCP STDERR|\[.*\])/.test(l.trim())).join('\n');
@@ -477,16 +479,16 @@ async function synthSegment(text, archetype, signal) {
 /* ---------------- memory extraction (best-effort, off the hot path) ---------------- */
 let sinceExtract = 0;
 
-async function runProvider(provider, m, ac, onDelta, system) {
+async function runProvider(provider, m, ac, onDelta, system, names) {
   if (provider === 'ollama') return streamOllama(m, ac, onDelta, system);
-  if (provider === 'claude-code') return streamClaudeCode(m, ac, onDelta, system);
-  if (provider === 'codex') return streamCodex(m, ac, onDelta, system);
-  if (provider === 'gemini-cli') return streamGeminiCli(m, ac, onDelta, system);
+  if (provider === 'claude-code') return streamClaudeCode(m, ac, onDelta, system, names);
+  if (provider === 'codex') return streamCodex(m, ac, onDelta, system, names);
+  if (provider === 'gemini-cli') return streamGeminiCli(m, ac, onDelta, system, names);
   if (provider === 'openclaw') return streamOpenClaw(m, ac, onDelta, {});
   return streamAnthropic(m, ac, onDelta, system);
 }
 
-async function extractMemory(provider, msgs, reply) {
+async function extractMemory(provider, msgs, reply, names = {}) {
   const stamp = '[time: ' + new Date().toLocaleString('en-US', { weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false }) + ']';
   const transcript = stamp + '\n' + msgs.slice(-6).map(m =>
     (m.role === 'user' ? 'User: ' : 'Her: ') +
@@ -496,24 +498,24 @@ async function extractMemory(provider, msgs, reply) {
   const kill = setTimeout(() => ac.abort(), 90000);
   let out = '';
   try {
-    await runProvider(provider, [{ role: 'user', content: extractPrompt(memory.known(), transcript) }],
-      ac, d => { out += d; }, EXTRACT_SYSTEM);
+    await runProvider(provider, [{ role: 'user', content: extractPrompt(memory.known(), transcript, names.userName, names.charName) }],
+      ac, d => { out += d; }, extractSystem(names.userName, names.charName));
     const n = memory.addFacts(out.split('\n'));
     if (n) console.log('[memory] +' + n + ' entrie(s), ' + memory.facts.length + ' total');
     /* every few extractions, the inner monologue re-reads everything */
     memory.meta.extracts = (memory.meta.extracts || 0) + 1;
-    if (memory.meta.extracts % 4 === 0 && memory.facts.length >= 8) reflectMemory(provider);
+    if (memory.meta.extracts % 4 === 0 && memory.facts.length >= 8) reflectMemory(provider, names);
   } catch (e) { /* memory is a bonus, never an error */ }
   finally { clearTimeout(kill); }
 }
 
-async function reflectMemory(provider) {
+async function reflectMemory(provider, names = {}) {
   const ac = new AbortController();
   const kill = setTimeout(() => ac.abort(), 120000);
   let out = '';
   try {
-    await runProvider(provider, [{ role: 'user', content: reflectPrompt(memory.all()) }],
-      ac, d => { out += d; }, REFLECT_SYSTEM);
+    await runProvider(provider, [{ role: 'user', content: reflectPrompt(memory.all(), names.userName, names.charName) }],
+      ac, d => { out += d; }, reflectSystem(names.charName));
     const n = memory.addFacts(out.split('\n'), 'pattern');
     if (n) console.log('[memory] reflection +' + n + ' insight(s)');
   } catch (e) { /* reflection is a luxury */ }
@@ -626,8 +628,14 @@ app.post('/api/chat', async (req, res) => {
      characters actually differ (best-effort; competes with the agent's own config). */
   if (provider === 'openclaw' && msgs.length) {
     const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');
-    const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + ' ' + personaBoundary
-      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|sunset-beach|night-city|cosmos). Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
+    /* She only knows their name if they have told her. OpenClaw never sees the
+       system prompt, so the [name:] instruction has to ride here too or she asks
+       on this path and can never save the answer. */
+    const naming = userName
+      ? ' Their name is ' + userName + '.'
+      : ' You do not know their name yet. Ask, and the moment they tell you, save it with [name:What they said] — once, without announcing it, then just use it.';
+    const framing = '[Reply entirely in character as ' + archetype.name + ' — "' + archetype.tagline + '". ' + persona + ' ' + personaBoundary + naming
+      + ' Perform her live with inline bracket tags — they are EXECUTED, never spoken aloud: START every reply with [affect:X] (X = ' + AFFECTS.join('|') + '); drop [gesture:Y] wherever she would naturally move (Y = ' + GESTURES.join('|') + '); use [scene:Z] to change her world (Z = violet-dream|sunset-beach|night-city|cosmos); [remember:one short line] keeps something that matters. Write her spoken words as natural speech with these tags woven inline. Do NOT narrate actions with asterisks or parentheses — the bracket tags ARE how her body performs. If asked to dance, move, or go somewhere, DO it with the tag.]';
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') { msgs[i] = { ...msgs[i], content: framing + '\n\n' + msgs[i].content }; break; }
     }
@@ -715,7 +723,7 @@ app.post('/api/chat', async (req, res) => {
   msgs = normalizeAttachments(msgs, provider);
 
   try {
-    await runProvider(provider, msgs, ac, onDelta, system);
+    await runProvider(provider, msgs, ac, onDelta, system, { userName, charName: archetype.name });
     for (const s of splitter.flush()) for (const g of grouper.push(s)) emitSegment(g);
     for (const g of grouper.flush()) emitSegment(g);
     await emitChain;                    /* let all per-segment guard checks finish */
@@ -724,7 +732,7 @@ app.post('/api/chat', async (req, res) => {
     else {
       send({ type: 'done', full, turnId });
       /* every couple of exchanges, quietly mine the conversation for memories */
-      if (full && memWritable && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full); }
+      if (full && memWritable && ++sinceExtract >= 2) { sinceExtract = 0; extractMemory(provider, msgs, full, { userName, charName: archetype.name }); }
     }
   } catch (e) {
     if (ac.signal.aborted) send({ type: 'interrupted', turnId });
@@ -799,8 +807,13 @@ app.post('/api/greet', async (req, res) => {
      not when the request body is merely fully read (Node fires req 'close' then) */
   res.on('close', () => { if (!finished) ac.abort(); });
   try {
-    const text = String(archetype.greeting || '').replace(/\{userName\}/g, userName || 'you');
+    /* No name yet means she has never met them: she introduces herself and asks,
+       instead of the app blocking on a dialog before she has said a word. */
+    const first = !userName;
+    const src = first ? (archetype.intro || archetype.greeting) : archetype.greeting;
+    const text = String(src || '').replace(/\{userName\}/g, userName || 'you');
     const p = parseSegment(text);
+    for (const ev of p.events) send({ type: 'ctl', ...ev });
     if (p.caption) {
       send({ type: 'seg', i: 0, caption: p.caption, mood: p.mood, tts: ttsOn });
       if (ttsOn) {

@@ -41,6 +41,9 @@ export const AUDIO_TAGS = Object.keys(TAG_MOOD);
 
 const DIRECTIVE_RE = /\[\s*(scene|avatar|gesture|affect)\s*:\s*([\w .-]+?)\s*\]/gi;
 const REMEMBER_RE = /\[\s*remember\s*:\s*([^\]\n]{4,220}?)\s*\]/gi;
+/* [name:Ori] — she learns what to call you from the conversation itself, rather
+   than the app blocking on a native prompt before she has even said hello. */
+const NAME_RE = /\[\s*name\s*:\s*([^\]\n]{1,40}?)\s*\]/gi;
 const ANY_TAG_RE = /\[[^\[\]\n]{1,240}\]/g;
 
 /* Parse one text segment into TTS text, clean caption, control events, and
@@ -50,6 +53,10 @@ export function parseSegment(text) {
   const events = [];
   let ttsText = String(text).replace(REMEMBER_RE, (m, note) => {
     events.push({ kind: 'remember', name: note.trim() });
+    return ' ';
+  });
+  ttsText = ttsText.replace(NAME_RE, (m, who) => {
+    events.push({ kind: 'name', name: who.trim().slice(0, 40) });
     return ' ';
   });
   ttsText = ttsText.replace(DIRECTIVE_RE, (m, kind, name) => {

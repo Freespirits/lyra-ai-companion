@@ -279,6 +279,10 @@ function handleCtl(ev) {
   if (ev.kind === 'gesture') doGesture(ev.name);
   else if (ev.kind === 'affect') avatar.setAffect(ev.name);
   else if (ev.kind === 'remember') { toast('She’ll remember that.'); spawnFx(); }
+  else if (ev.kind === 'name') {                 /* she learned it in conversation */
+    const n = String(ev.name || '').trim();
+    if (n && n.toLowerCase() !== getUserName().toLowerCase()) { lyraSetName(n); toast('She’ll call you ' + n + '.'); }
+  }
   else if (ev.kind === 'scene') {
     if (turn === userSceneTurn) return;   /* you picked a scene mid-reply: yours wins */
     sceneMgr.apply(ev.name).then(ok => { if (ok) markScenePicker(ev.name); });
@@ -444,7 +448,8 @@ function speakGreeting(id) {
     endpoint: '/api/greet', archetype: id, messages: [], turnId: myTurn,
     onEvent: ev => {
       if (myTurn !== turn) return;
-      if (ev.type === 'seg') gp.addSeg(ev);
+      if (ev.type === 'ctl') handleCtl(ev);
+      else if (ev.type === 'seg') gp.addSeg(ev);
       else if (ev.type === 'audio') gp.addAudio(ev.i, ev);
       else if (ev.type === 'done' || ev.type === 'error') gp.finish();
     },
@@ -481,10 +486,9 @@ async function swapAvatar(name) {
 /* ---------------- boot ---------------- */
 async function boot() {
   try {
-    if (!getUserName() && !window.Capacitor) {
-      const n = window.prompt('What should she call you?');
-      if (n && n.trim()) lyraSetName(n.trim());
-    }
+    /* Deliberately no name prompt here. A native dialog freezes the page before
+       she has loaded, and asking a stranger to fill a form is a bad hello — she
+       introduces herself and asks, and saves it with [name:] when you answer. */
     avatar = new Avatar($('cv3d'), $('stageInner'));
     avatar.viseme = () => lip.current();
     avatar.onFx = spawnFx;
@@ -606,6 +610,7 @@ async function boot() {
     /* console debug handle */
     window.lyra = { avatar, sceneMgr, get anim() { return anim; }, get state() { return state; } };
 
+
     const clock = { last: performance.now() };
     (function loop(now) {
       requestAnimationFrame(loop);
@@ -615,8 +620,11 @@ async function boot() {
       avatar.update(dt, d => { if (anim && anim.hasMocap) anim.update(d); });
     })(performance.now());
 
-    /* she notices you arriving */
-    handleUser('(Ori just came online and can see you now. Greet him.)', { hidden: true });
+    /* First run she has never met you: she introduces herself and asks your name
+       (the server serves archetype.intro while userName is empty, and [name:] in
+       your answer saves it). After that she just notices you arriving. */
+    if (!getUserName()) speakGreeting(activeArchetype);
+    else handleUser('(' + getUserName() + ' just came online and can see you now. Greet them.)', { hidden: true });
   } catch (e) {
     loadEl.style.display = 'flex';
     loadMsg.textContent = 'Startup failed: ' + e.message;

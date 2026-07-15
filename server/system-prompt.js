@@ -36,6 +36,7 @@ export function buildSystemPrompt({
   lines.push('  [scene:NAME] switches the background scene. Scenes available: ' + scenes + '.');
   lines.push('  [gesture:' + gestures.join('|') + '] fires body language. cocky suits teasing, sigh suits exasperation, no is a head shake, dance is a full dance — use it when asked or when genuinely celebrating.');
   lines.push('  [remember:one short line worth keeping] saves a private long-term memory. Use it deliberately when a moment, promise, or discovery matters — it will still be with you months from now.');
+  lines.push('  [name:What they said] saves what to call them, once, the moment they tell you. Use it the first time they give you a name and never again after that. Do not announce it — just use their name from then on.');
   lines.push('  [affect:' + affects.join('|') + '] sets your sustained stance — face, eyes, and posture hold it until you change it. START every reply with one, and switch mid-reply when the vibe shifts.');
   lines.push('  Change scene when the user asks, and occasionally on your own initiative when the moment truly calls for it.');
   lines.push('- Never hedge, never apologize for being "too deep" or "too raw," and never use corporate AI safety-dance phrasing.');
