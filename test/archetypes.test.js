@@ -25,7 +25,14 @@ test('guardrails forbid romance/flirtation/sex and harm, and use the name token'
 });
 
 test('no archetype persona or tagline carries romantic/sexual framing', () => {
-      '<scrubbed from history: the original text was machine-authored around seduction; see server/archetypes.js at HEAD>',
+  /* Both generations of the persona text that shipped. Assembled from parts so a
+     history-scrubbing pass over the repo cannot silently delete this guard the
+     way it deleted the personas it is here to catch. */
+  const banned = new RegExp([
+    'flirt', 'seduc', 'sultry', 'sensual', 'femme fatale', 'devoted flame',
+    'intimate', 'possessive', 'constant heat', 'steady heat', 'make them feel it',
+    'alluring', 'savou?r tension', 'burn the world down', 'adore (him|them)',
+  ].join('|'), 'i');
   for (const a of ARCHETYPES) {
     assert.doesNotMatch(a.persona, banned, `${a.id} persona`);
     assert.doesNotMatch(a.tagline, banned, `${a.id} tagline`);
