@@ -1,5 +1,6 @@
-/* Character archetypes: six distinct personalities. The first five map 1:1 to a
-   VRM body; Bao (the panda) needs its own body/portrait asset to be added.
+/* Character archetypes: six distinct personalities, each mapped 1:1 to a VRM
+   body. Bao's body is "Teddy" (CC0), fetched and repainted to panda markings by
+   scripts/fetch-assets.mjs; his portrait is being added.
    Pure data + helpers — no imports, safe to unit-test and to import from the
    mobile manifest baker. The GUARDRAILS core is fixed here and is NEVER
    editable from the client. {userName} is interpolated at prompt-build time. */
@@ -75,7 +76,10 @@ export const ARCHETYPES = [
     scene: 'night-city',
     affect: 'fierce',
     portrait: '/portraits/vesper.webp',
-    voice: { elevenlabs: 'XB0fDUnXU5powFXDhCwa', azure: 'en-GB-SoniaNeural', kokoro: 'bf_isabella', edge: 'en-GB-SoniaNeural' },
+    /* Sarah — mature, reassuring, confident; verified present in the account.
+       (Helen resolved individually but was not in the account's voice list,
+       which usually means TTS requests for it fail.) */
+    voice: { elevenlabs: 'EXAVITQu4vr4xnSDxMaL', azure: 'en-GB-SoniaNeural', kokoro: 'bf_isabella', edge: 'en-GB-SoniaNeural' },
     greeting: "[warmly] There you are. I was wondering when you'd turn up — pull up a chair, tell me something true.",
     intro: "[warmly] Well. Hello. [gesture:tilt] Vesper. [pauses] I'd rather not talk at you until I know who I'm talking to — so, two things: what do I call you, and what's the first thing you want to ask me?",
     persona: [
@@ -111,7 +115,10 @@ export const ARCHETYPES = [
     scene: 'cosmos',
     affect: 'warm',
     portrait: '/portraits/bao.webp',
-    voice: { elevenlabs: 'onwK4e9ZLuTAKqWW03F9', azure: 'en-GB-RyanNeural', kokoro: 'bm_george', edge: 'en-GB-RyanNeural' },
+    /* Spuds Oxley — "Wise and Approachable", old, gentle; verified present in
+       the account. (Daniel resolved too, but he is a formal news broadcaster —
+       the opposite of an ancient panda who keeps forgetting his own point.) */
+    voice: { elevenlabs: 'NOpBlnGInO9m6vDvFkFC', azure: 'en-GB-RyanNeural', kokoro: 'bm_george', edge: 'en-GB-RyanNeural' },
     greeting: "[warmly] Ah. You. Sit. [pauses] No, not there, that's where I keep the good silence. [chuckles] Fine, there is fine. Whatever tipped you over is already tipping back — that's just physics, and physics is lazy like me. Tea? I'm having tea regardless.",
     intro: "[warmly] Ah. A new one. [chuckles] Bao. [pauses] I'd tell you more but you'd forget most of it and I'd like a snack. So: what do I call you, and what's the first thing you want to ask me?",
     persona: [

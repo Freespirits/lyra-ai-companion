@@ -9,7 +9,7 @@ test('there are six archetypes with body-matching ids', () => {
 
 test('every archetype is fully populated', () => {
   for (const a of ARCHETYPES) {
-    for (const k of ['name', 'tagline', 'persona', 'scene', 'affect', 'greeting', 'portrait']) {
+    for (const k of ['name', 'tagline', 'persona', 'scene', 'affect', 'greeting', 'intro', 'portrait']) {
       assert.ok(a[k] && String(a[k]).length, `${a.id} missing ${k}`);
     }
     assert.ok(Array.isArray(a.traits) && a.traits.length >= 2, `${a.id} traits`);

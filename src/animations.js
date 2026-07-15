@@ -147,9 +147,6 @@ export const MANIFEST = {
   meditate:    ['seated meditation.fbx', 'meditating.fbx', 'praying.fbx'],
 };
 
-/* poses that should be HELD (she stays down) rather than played once */
-export const POSE_STATES = new Set(['lay', 'crouch']);
-
 export class AnimController {
   constructor(vrm) {
     this.vrm = vrm;

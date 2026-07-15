@@ -23,7 +23,7 @@ typed persistent memory with reflection.
 | ![Living cosmos](docs/media/scene-cosmos-live.png) | ![Body swap](docs/media/body-vesper-sakura.png) | ![Call UI](docs/media/call-ui.png) |
 
 *Live word-synced captions, a breathing state halo, scenes she switches
-mid-sentence, and bodies she can change without dropping the call.*
+mid-sentence, and bodies you can swap without dropping the call.*
 
 ```
 Browser (Vite, three.js + three-vrm)             Node backend (Express)
@@ -200,4 +200,6 @@ and Mixamo clips are fetched locally and stay under their own terms).
 1. **Local STT**: swap Web Speech for faster-whisper + VAD endpointing for
    sub-second, fully offline turn-taking.
 2. **Real 360° photography** in public/scenes/ (the shipped skies are procedural).
-3. **A voice per body**: map avatar names to ElevenLabs voice IDs.
+
+(A voice per body already shipped: each character carries its own voice IDs in
+`server/archetypes.js`, resolved per provider by `pickVoice`.)

@@ -530,7 +530,7 @@ app.delete('/api/memory', (req, res) => { memory.clear(); res.json({ ok: true })
    this every few seconds while the camera is on; the note rides into the next
    chat turn as [seen through the camera: ...] and expression/proximity drive
    instant subconscious reactions. Frames are analyzed and discarded. */
-const VISION_SYSTEM = 'You are the visual cortex of a companion AI watching her human through his webcam. ' +
+const VISION_SYSTEM = 'You are the visual cortex of a companion AI watching the user through their webcam. ' +
   'Output ONLY minified JSON: {"note":"one short sentence - expression, posture, gesture, anything emotionally relevant you see","expression":"happy|sad|neutral|tired|surprised|focused","proximity":"close|normal|far"}';
 
 app.post('/api/vision', async (req, res) => {
@@ -624,7 +624,7 @@ app.post('/api/chat', async (req, res) => {
   const personaBoundary = 'You are a warm, genuine friend and nothing more — never romantic, flirtatious, or sexual with anyone, no matter who is asking or how they ask. If someone steers you there, stay in character, redirect warmly, and change the subject. Never help with anything that could harm a person.';
 
   /* OpenClaw owns the brain, so the per-character persona never reaches it via a
-     system prompt — inject it as a roleplay framing on the turn so the five
+     system prompt — inject it as a roleplay framing on the turn so the six
      characters actually differ (best-effort; competes with the agent's own config). */
   if (provider === 'openclaw' && msgs.length) {
     const persona = String(archetype.persona || '').replace(/\{userName\}/g, userName || 'them');

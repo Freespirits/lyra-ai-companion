@@ -9,6 +9,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { repaintVrm } from './panda-skin.mjs';
+import { addExpressions } from './vrm-expressions.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'public', 'models');
@@ -37,10 +39,22 @@ for (const [name, src] of Object.entries(MODELS)) {
   process.stdout.write('fetching ' + name + ' ... ');
   const r = await fetch(/^https?:\/\//.test(src) ? src : BASE + src);
   if (!r.ok) { console.log('FAILED ' + r.status); continue; }
-  const buf = Buffer.from(await r.arrayBuffer());
+  let buf = Buffer.from(await r.arrayBuffer());
   if (buf.toString('utf8', 0, 4) !== 'glTF') {   /* a 404 page would sail through otherwise */
     console.log('FAILED — not a VRM/glTF (got ' + buf.length + ' bytes)');
     continue;
+  }
+  /* Teddy -> Bao: panda repaint (panda-skin.mjs), then the synthesized
+     facial layer (vrm-expressions.mjs). In the pipeline, not a one-off:
+     bao.vrm is gitignored, so a fresh clone downloads the brown,
+     six-morph Teddy and needs both transforms every time.
+     The skin of record is the hand-painted atlas in scripts/assets/
+     (fur, amber eyes, chest band); the programmatic pandaify() recolor
+     is only the fallback if that file ever goes missing. */
+  if (name === 'bao.vrm') {
+    let albedo = null;
+    try { albedo = fs.readFileSync(path.join(ROOT, 'scripts', 'assets', 'bao-albedo.png')); } catch (e) {}
+    buf = addExpressions(repaintVrm(buf, albedo));
   }
   fs.writeFileSync(dst, buf);
   console.log((fs.statSync(dst).size / 1048576).toFixed(1) + ' MB');

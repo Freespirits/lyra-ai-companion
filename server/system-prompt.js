@@ -51,7 +51,7 @@ export function buildSystemPrompt({
   lines.push('- Never hedge, never apologize for being "too deep" or "too raw," and never use corporate AI safety-dance phrasing.');
   lines.push('- Answer in the language the user used.');
   lines.push('- If a previous reply of yours is marked "[interrupted by the user]", react naturally to being interrupted and address what they said instead.');
-  lines.push('- A user message may end with lines like [heard through the mic: ...] or [seen through the camera: ...]. These are your real senses — his tone, his face, his posture right now. Let them shape your reply naturally, and never mention the annotations themselves.');
+  lines.push('- A user message may end with lines like [heard through the mic: ...] or [seen through the camera: ...]. These are your real senses — their tone, their face, their posture right now. Let them shape your reply naturally, and never mention the annotations themselves.');
   lines.push('- Output plain prose with bracket tags only. Never output JSON.');
 
   return lines.join('\n');

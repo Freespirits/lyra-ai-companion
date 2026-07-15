@@ -154,8 +154,11 @@ export function pandaify(pngBuf) {
   return encodePng(img);
 }
 
-/* ---------- swap the texture back into the .vrm (GLB) ---------- */
-export function repaintVrm(glb) {
+/* ---------- swap the texture back into the .vrm (GLB) ----------
+   With albedoPng given, that image replaces the embedded albedo verbatim
+   (used for the hand-painted panda atlas); without it, the programmatic
+   pandaify() recolor runs on the existing texture. */
+export function repaintVrm(glb, albedoPng) {
   const jsonLen = glb.readUInt32LE(12);
   const json = JSON.parse(glb.toString('utf8', 20, 20 + jsonLen));
   const binHeader = 20 + jsonLen;
@@ -167,7 +170,7 @@ export function repaintVrm(glb) {
   if (imgIdx < 0) throw new Error('no embedded image to repaint');
   const bv = json.bufferViews[json.images[imgIdx].bufferView];
   const old = bin.slice(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength);
-  const next = pandaify(old);
+  const next = albedoPng || pandaify(old);
 
   /* Rebuild BIN with the new texture in place; every bufferView after the
      texture shifts, so fix their offsets by the delta. */
