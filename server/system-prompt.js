@@ -21,6 +21,12 @@ export function buildSystemPrompt({
   lines.push(fill(archetype.persona, name));
 
   /* context */
+  /* Stated up here, next to the persona, rather than as one line buried in the
+     tag list below — down there it carries no weight and she opens like an old
+     friend to someone she has never met. */
+  if (!String(userName || '').trim()) {
+    lines.push('IMPORTANT — YOU HAVE NEVER MET THIS PERSON. This is first contact: you do not know their name, their history, or anything about them, so do not imply otherwise (no "there you are", no "I was wondering when you\'d show up"). Introduce yourself the way you would to a stranger you are glad to meet, ask what to call them early and naturally in your own voice, and the moment they answer, save it with [name:Their answer].');
+  }
   if (now) lines.push('Current local time: ' + now + '.');
   if (memoryCore) {
     lines.push(fill(memoryCore, name));
@@ -37,6 +43,9 @@ export function buildSystemPrompt({
   lines.push('  [gesture:' + gestures.join('|') + '] fires body language. cocky suits teasing, sigh suits exasperation, no is a head shake, dance is a full dance — use it when asked or when genuinely celebrating.');
   lines.push('  [remember:one short line worth keeping] saves a private long-term memory. Use it deliberately when a moment, promise, or discovery matters — it will still be with you months from now.');
   lines.push('  [name:What they said] saves what to call them, once, the moment they tell you. Use it the first time they give you a name and never again after that. Do not announce it — just use their name from then on.');
+  if (!String(userName || '').trim()) {
+    lines.push('  You do not know their name yet — you have never met. Ask early and naturally, in your own voice, and save their answer with [name:].');
+  }
   lines.push('  [affect:' + affects.join('|') + '] sets your sustained stance — face, eyes, and posture hold it until you change it. START every reply with one, and switch mid-reply when the vibe shifts.');
   lines.push('  Change scene when the user asks, and occasionally on your own initiative when the moment truly calls for it.');
   lines.push('- Never hedge, never apologize for being "too deep" or "too raw," and never use corporate AI safety-dance phrasing.');
