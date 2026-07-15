@@ -166,6 +166,10 @@ export class Avatar {
       try { VRMUtils.deepDispose(old.scene); } catch (e) {}
     }
     this._attach(vrm);
+    /* _attach re-measured headY for the new body — reframe, or a taller model
+       (bodies are auto-discovered, any height walks in) leaves the camera at
+       the previous body's height, staring at its torso. */
+    this.frame(this.camMode || 'full');
     return vrm;
   }
 
@@ -261,6 +265,7 @@ export class Avatar {
   }
 
   frame(mode) {
+    this.camMode = mode;                       /* remembered so swapModel can reframe in kind */
     if (mode === 'close') {
       this.camera.position.set(0, this.headY + .04, .9);
       this.controls.target.set(0, this.headY - .05, 0);
