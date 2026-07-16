@@ -16,3 +16,8 @@ vite.config.js.timestamp-*
 Lyra.apk
 server/.scratch/
 .playwright-mcp/
+
+# per-install launchers created by scripts/setup-wizard.mjs
+Lyra.bat
+Lyra.command
+lyra-start.sh

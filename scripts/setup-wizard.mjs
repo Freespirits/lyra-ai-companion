@@ -18,8 +18,20 @@ const IS_WIN = process.platform === 'win32';
 const IS_MAC = process.platform === 'darwin';
 
 /* ---------- tiny helpers ---------- */
+/* One readline, driven by a line queue rather than rl.question — so prompts work
+   both interactively (a human at a TTY) AND with piped/redirected answers (which
+   rl.question can't do past the first prompt on a non-TTY stream). */
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const ask = q => new Promise(res => rl.question(q, a => res(a.trim())));
+const _lines = [];
+const _waiters = [];
+rl.on('line', l => { const w = _waiters.shift(); if (w) w(l); else _lines.push(l); });
+rl.on('close', () => { let w; while ((w = _waiters.shift())) w(''); });
+const ask = q => new Promise(res => {
+  process.stdout.write(q);
+  const give = v => res(String(v).trim());
+  if (_lines.length) give(_lines.shift());
+  else _waiters.push(give);
+});
 async function choose(title, options, def) {
   console.log('\n' + title);
   options.forEach((o, i) => console.log('  ' + (i + 1) + ') ' + o));
@@ -140,8 +152,9 @@ async function main() {
 
   /* 4) BUILD */
   console.log('\n  Building the app (one moment)...');
-  const npm = IS_WIN ? 'npm.cmd' : 'npm';
-  const build = spawnSync(npm, ['run', 'build'], { cwd: ROOT, stdio: 'inherit' });
+  /* shell:true so Windows can run npm (a .cmd) — Node 20+ refuses to spawn
+     .cmd/.bat directly. Works on macOS/Linux too. */
+  const build = spawnSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'inherit', shell: true });
   if (build.status !== 0) console.log(c.y('  Build had a problem — you can still run it, tell whoever set this up.'));
 
   /* 5) LAUNCHER (double-click to open Lyra any time) */

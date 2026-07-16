@@ -33,16 +33,40 @@ Browser (Vite, three.js + three-vrm)             Node backend (Express)
   ears WebSocket -> prosody cues (laugh/sigh/silence/user_speaking)
 ```
 
-## Quick start
+## Get Lyra — one command
+
+Not technical? This downloads everything, walks you through choosing an AI brain
+(Ollama / OpenClaw / Claude / ChatGPT / Gemini) plus voice and hearing, and drops
+a double-click launcher. You only click through the Node/Ollama installers it
+opens for you — everything else is automatic.
+
+**macOS / Linux** — paste into Terminal:
 
 ```bash
-npm install
-node scripts/fetch-assets.mjs   # downloads the avatar bodies (VRoid samples)
-cp .env.example .env            # fill in your provider settings
-npm run dev                     # backend on :8686, app on http://localhost:5173
+curl -fsSL https://raw.githubusercontent.com/Freespirits/lyra-ai-companion/main/install.command | bash
 ```
 
-Requires Node 20+. Chrome or Edge required for voice calls (Web Speech API).
+(or on a Mac, download `install.command` and right-click → Open.)
+
+**Windows** — paste into PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Freespirits/lyra-ai-companion/main/install.ps1 | iex
+```
+
+Afterwards, open her any time by double-clicking **Lyra** in the install folder
+(`~/Lyra`). Chrome or Edge is required for voice calls.
+
+## Quick start (manual / developers)
+
+```bash
+npm install    # also downloads the avatar bodies (~75 MB) and seeds .env
+npm run dev    # backend on :8686, app on http://localhost:5173
+```
+
+Then edit `.env` to pick your provider, or run `node scripts/setup-wizard.mjs`
+for the same guided setup the installer uses. Requires Node 20+. Chrome or Edge
+required for voice calls (Web Speech API).
 Note: the backend port is 8686 because Windows reserves 8758-8857
 (`netsh interface ipv4 show excludedportrange protocol=tcp`).
 
