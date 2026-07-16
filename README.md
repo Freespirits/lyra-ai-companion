@@ -40,6 +40,14 @@ Not technical? This downloads everything, walks you through choosing an AI brain
 a double-click launcher. You only click through the Node/Ollama installers it
 opens for you — everything else is automatic.
 
+**Any OS, one command** (if you already have [Node 20+](https://nodejs.org)):
+
+```bash
+npx create-lyra
+```
+
+Or a self-contained script that also installs Node for you:
+
 **macOS / Linux** — paste into Terminal:
 
 ```bash
