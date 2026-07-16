@@ -1,0 +1,38 @@
+{
+  "name": "create-lyra",
+  "version": "1.0.0",
+  "description": "One command to install Lyra — a self-hosted, local-first 3D avatar companion you talk to. Downloads the app, fetches the bodies, and runs a guided setup.",
+  "type": "module",
+  "bin": {
+    "create-lyra": "index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "index.mjs"
+  ],
+  "keywords": [
+    "lyra",
+    "avatar",
+    "companion",
+    "vrm",
+    "3d-avatar",
+    "voice",
+    "lip-sync",
+    "openclaw",
+    "installer",
+    "create"
+  ],
+  "homepage": "https://github.com/Freespirits/lyra-ai-companion",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Freespirits/lyra-ai-companion.git",
+    "directory": "create-lyra"
+  },
+  "bugs": {
+    "url": "https://github.com/Freespirits/lyra-ai-companion/issues"
+  },
+  "author": "Freespirits",
+  "license": "MIT"
+}
