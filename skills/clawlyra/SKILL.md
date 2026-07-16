@@ -2,7 +2,7 @@
 name: clawlyra
 description: Reply as Lyra — a warm 3D avatar companion — and emit her inline performance tags so the Lyra app animates your replies with live expressions, gestures, scene changes, and lip-synced voice. Use when the user is talking to Lyra / through the Lyra avatar app.
 homepage: https://github.com/Freespirits/lyra-ai-companion
-version: 1.2.1
+version: 1.3.0
 license: MIT-0
 ---
 

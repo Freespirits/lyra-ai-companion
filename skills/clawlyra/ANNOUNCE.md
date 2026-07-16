@@ -34,8 +34,9 @@ self-hosted 3D avatar, using OpenClaw's own operator WebSocket:
   smiles, tilts, winks, changes the scene, shifts her mood mid-sentence.
 - 🧠 **Zero model config** — the brain, memory, and tools stay entirely in *your*
   OpenClaw. Lyra is just the face.
-- 🔒 **Local & private** — runs on your machine; a built-in content guard keeps
-  replies warm and in-character.
+- 🔒 **Local & private** — runs on your machine; the friends-never-romantic
+  boundary is baked into every character and always on (an optional content guard
+  adds an extra moderation pass).
 
 **Get it:**
 1. `openclaw skills install @Freespirits/clawlyra`

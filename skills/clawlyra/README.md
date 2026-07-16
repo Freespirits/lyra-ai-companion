@@ -40,10 +40,11 @@ So this is two pieces:
 
 ## Notes
 
-- **Content guard:** Lyra runs its own content guard (allows warm, friendly talk;
-  blocks romantic/flirtatious/sexual and harmful content) independent of your
-  agent. The characters are friends, never romantic — that boundary is baked into
-  their personas and always on, and Lyra enforces the line regardless of your agent.
+- **The boundary:** the characters are friends, never romantic — that boundary is
+  baked into their personas and is **always on**, independent of your agent and of
+  any toggle. Lyra also ships an *optional* content guard (a keyword moderation
+  pass, **off by default**) you can switch on with `LYRA_GUARD=on` for an extra
+  layer; see the Lyra README.
 - **Compatibility:** the exact tag vocabulary in `SKILL.md` mirrors Lyra's
   `server/protocol.js`. If you extend Lyra's gestures/affects/scenes, update the
   skill's lists to match.
