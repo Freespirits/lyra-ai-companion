@@ -589,6 +589,11 @@ async function boot() {
     }
     avatars = avRes.status === 'fulfilled' ? (avRes.value.avatars || []) : [];
     archetypes = arRes.status === 'fulfilled' ? (arRes.value.archetypes || []) : [];
+    /* No bodies in public/models/ means fetch-assets never ran (a fresh clone).
+       Loading a missing .vrm makes the dev server return index.html, and the VRM
+       loader chokes on "<!DOCTYPE …" with a cryptic JSON error — so say the real
+       thing instead. */
+    if (!avatars.length) throw new Error('No avatar bodies found in public/models/. Run  npm run assets  to download them (~74 MB), then reload.');
     const first = avatars.find(a => a.name === 'lyra') || avatars[0];
     currentAvatarUrl = first ? first.url : '/models/lyra.vrm';
 

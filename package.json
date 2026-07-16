@@ -7,6 +7,7 @@
     "build": "vite build",
     "server": "node server/index.js",
     "assets": "node scripts/fetch-assets.mjs",
+    "postinstall": "node scripts/fetch-assets.mjs",
     "test": "node --test"
   },
   "dependencies": {

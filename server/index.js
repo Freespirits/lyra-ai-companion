@@ -875,6 +875,21 @@ app.get('/api/health', (req, res) => res.json({
   inflightTurns: [...inflight.keys()],
 }));
 
+/* Production: serve the built frontend (dist/) so the whole app runs on ONE port
+   via `node server/index.js`. In dev, dist/ is absent — Vite serves the UI and
+   proxies /api, /ears, /stt back here. Placed after every /api route so the SPA
+   fallback can never shadow the API; /ears + /stt are WebSocket upgrades handled
+   below, so this leaves them untouched. */
+const DIST = path.join(ROOT, 'dist');
+if (fs.existsSync(path.join(DIST, 'index.html'))) {
+  app.use(express.static(DIST));
+  app.get('*', (req, res, next) => {
+    if (/^\/(api|ears|stt)(\/|$)/.test(req.path)) return next();
+    res.sendFile(path.join(DIST, 'index.html'));
+  });
+  console.log('[lyra] serving built UI from dist/ — open http://' + BIND_HOST + ':' + PORT);
+}
+
 const server = http.createServer(app);
 /* Same origin/token gate on the /ears + /stt WebSockets as on /api. */
 function wsVerify(info) {
