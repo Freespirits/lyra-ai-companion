@@ -1,4 +1,10 @@
 * text=auto
+
+# shell installers/launchers MUST stay LF or they break on macOS/Linux (bash
+# chokes on CR); PowerShell is happy with CRLF on Windows.
+*.command text eol=lf
+*.sh      text eol=lf
+*.ps1     text eol=crlf
 *.png binary
 *.webp binary
 *.gif binary
